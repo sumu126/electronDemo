@@ -112,7 +112,9 @@ export class WindowManager {
   }
 
   private setupTray(): void {
+    // 如果托盘已存在，确保托盘可见并显示通知
     if (this.tray) {
+      this.checkAndShowTrayNotification();
       return;
     }
 
@@ -193,27 +195,19 @@ export class WindowManager {
   }
 
   private async checkAndShowTrayNotification(): Promise<void> {
-    if (!this.configModule) {
-      console.error('Config module not set, cannot check tray notification status');
-      // 即使配置模块未设置也显示通知
-      this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
-      return;
-    }
-
-    try {
-      const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
-      if (!hasShown) {
-        // 第一次显示通知，并标记已显示
-        this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
-        await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
-      } else {
-        // 非第一次，显示简短的提示
-        this.showTrayNotification('Application minimized', 'Click tray icon to restore');
+    // 每次窗口关闭到托盘时都显示通知
+    this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+    
+    // 如果是第一次，标记已显示过
+    if (this.configModule) {
+      try {
+        const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
+        if (!hasShown) {
+          await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
+        }
+      } catch (error) {
+        console.error('Error updating tray notification status:', error);
       }
-    } catch (error) {
-      console.error('Error checking or updating tray notification status:', error);
-      // 即使配置检查失败也显示通知
-      this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
     }
   }
 
