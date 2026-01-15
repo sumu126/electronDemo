@@ -43,14 +43,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useSystemInfo } from './composables';
 import { useAppStore } from './stores/app.store';
 import FrameworkInfo from './components/FrameworkInfo.vue';
 import Modal from './components/Modal.vue';
 import ConfigPanel from './components/ConfigPanel.vue';
 
-const title = 'Electron + Vue3 应用框架';
+const title = ref('Electron + Vue3 应用框架'); // 默认标题
 
 // 使用composables
 const { 
@@ -81,6 +81,18 @@ const showConfigPanel = ref(false);
 
 // 可以在这里定义pingResult等响应式数据
 const pingResult = ref(null);
+
+// 在组件挂载时获取应用配置
+onMounted(async () => {
+  try {
+    const config = await window.electronAPI.invoke('config:get');
+    if (config && config.appName) {
+      title.value = config.appName;
+    }
+  } catch (error) {
+    console.error('Failed to get app config:', error);
+  }
+});
 </script>
 
 <style>

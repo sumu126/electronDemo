@@ -135,8 +135,9 @@ export class WindowManager {
       this.tray = new Tray(nativeImage.createEmpty());
     }
     
-    // 设置托盘提示
-    this.tray.setToolTip('Electron Vue3 Framework');
+    // 设置托盘提示，使用配置中的应用名称
+    const appName = this.configModule?.getValue<string>('appName') || 'Electron Vue3 Framework';
+    this.tray.setToolTip(appName);
     
     // 创建托盘菜单
     const contextMenu = Menu.buildFromTemplate([

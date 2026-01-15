@@ -26,8 +26,8 @@ export class ConfigModule {
 
   private getDefaultConfig(): AppConfig {
     return {
-      appName: APP_CONSTANTS.NAME,
-      version: APP_CONSTANTS.VERSION,
+      appName: app.getName() || APP_CONSTANTS.NAME,
+      version: app.getVersion() || APP_CONSTANTS.VERSION,
       theme: 'auto',
       language: 'zh-CN',
       window: {

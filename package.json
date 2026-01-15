@@ -1,5 +1,5 @@
 {
-  "name": "electron-vue3-framework",
+  "name": "electron-vue3-demo",
   "version": "1.0.0",
   "description": "Electron + Vue3 Application Framework",
   "main": "dist-electron/main.cjs",
@@ -20,8 +20,8 @@
     "Framework"
   ],
   "build": {
-    "appId": "com.electron-vue3.framework",
-    "productName": "Electron Vue3 Framework",
+    "appId": "com.electron-vue3.demo",
+    "productName": "electron-vue3-demo",
     "directories": {
       "output": "dist-app"
     },

@@ -1,6 +1,6 @@
 <template>
   <div class="framework-info-card">
-    <h3>{{ title }}</h3>
+    <h3>{{ componentTitle }}</h3>
     <p>{{ description }}</p>
     <div class="features">
       <div v-for="feature in features" :key="feature.title" class="feature-item">
@@ -12,6 +12,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
 
 interface Feature {
   title: string;
@@ -25,7 +26,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: 'Electron + Vue3 框架',
+  title: '',
   description: '一个现代化的桌面应用程序框架',
   features: () => [
     { title: '模块化架构', description: '清晰的分层架构，便于维护和扩展' },
@@ -33,6 +34,25 @@ const props = withDefaults(defineProps<Props>(), {
     { title: '状态管理', description: '使用 Pinia 进行高效的状态管理' },
     { title: '跨进程通信', description: '安全高效的主进程与渲染进程通信' }
   ]
+});
+
+// 如果没有传入标题，则从配置中获取
+const componentTitle = ref(props.title || '');
+
+onMounted(async () => {
+  if (!props.title) {
+    try {
+      const config = await window.electronAPI.invoke('config:get');
+      if (config && config.appName) {
+        componentTitle.value = `${config.appName} 框架`;
+      } else {
+        componentTitle.value = 'Electron + Vue3 框架';
+      }
+    } catch (error) {
+      console.error('Failed to get app config for title:', error);
+      componentTitle.value = 'Electron + Vue3 框架';
+    }
+  }
 });
 </script>
 
