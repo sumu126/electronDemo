@@ -61,15 +61,22 @@ npm install
 ### 开发模式
 
 ```bash
-# 启动开发服务器
+# 同时启动开发服务器和Electron应用（推荐）
+npm run electron:dev
+
+# 或者分别启动（用于调试）
+# 终端1：启动开发服务器
 npm run dev
 
-# 在另一个终端中启动Electron应用
+# 终端2：启动Electron应用
 npm run electron:start
-
-# 或者同时启动开发服务器和Electron应用
-npm run electron:dev
 ```
+
+**开发模式特点**：
+- 前端支持热重载，代码更改会自动刷新
+- Electron应用窗口会自动打开
+- 开发工具默认开启，便于调试
+- 使用 `http://localhost:5173` 加载前端资源
 
 ### 生产构建
 
@@ -101,6 +108,37 @@ npm run electron:build-win
 - `win-unpacked/` - 解包的应用程序文件
 
 **注意**: 应用在打包后会正确处理本地资源加载，避免 "Not allowed to load local resource" 错误。
+
+## 故障排除
+
+### 常见问题
+
+1. **端口5173被占用**
+   ```bash
+   # 检查占用端口的进程
+   netstat -ano | findstr :5173
+   
+   # 终止占用端口的进程（替换PID为实际进程ID）
+   taskkill /PID <PID> /F
+   ```
+
+2. **Electron应用无法启动**
+   - 确保前端开发服务器已启动（http://localhost:5173）
+   - 检查是否有防火墙或安全软件阻止连接
+
+3. **IPC通信错误："An object could not be cloned"**
+   - 已修复：配置数据在传输前会自动序列化
+   - 确保使用最新版本的代码
+
+4. **打包后应用白屏**
+   - 已修复：资源路径已正确配置
+   - 确保构建时包含所有必要文件
+
+### 开发建议
+
+- 使用 `npm run electron:dev` 进行开发，确保前后端同步启动
+- 修改代码后，前端会自动热重载，无需重启Electron应用
+- 如需调试主进程，可在Electron启动参数中添加 `--inspect` 或 `--inspect-brk`
 
 ## 主要功能
 
@@ -184,6 +222,18 @@ const newWindow = windowManager.createWindow('window-id', {
 ## 贡献
 
 欢迎提交Issue和Pull Request来改进此框架。
+
+## 项目状态
+
+✅ **已完成的功能**：
+- 完整的Electron + Vue3项目架构
+- 模块化系统设计
+- IPC跨进程通信
+- 配置管理系统
+- 窗口管理功能
+- Windows安装包打包
+- 开发模式热重载
+- 错误处理和故障排除
 
 ## 许可证
 

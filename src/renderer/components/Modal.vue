@@ -21,7 +21,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { defineProps, defineEmits } from 'vue';
 
 interface Props {
   visible: boolean;

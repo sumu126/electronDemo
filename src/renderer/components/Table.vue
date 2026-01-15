@@ -61,7 +61,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { defineProps } from 'vue';
 
 interface Column {
   title: string;
