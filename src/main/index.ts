@@ -62,11 +62,41 @@ class App {
       }
     });
   }
+  
+  public getWindowManager(): WindowManager {
+    return this.windowManager;
+  }
 }
 
-const appInstance = new App();
+// 单实例锁 - 确保只运行一个应用实例
+const gotTheLock = app.requestSingleInstanceLock();
 
-appInstance.init().catch(error => {
-  console.error('Failed to initialize app:', error);
+if (!gotTheLock) {
+  console.log('Another instance of the app is already running. Quitting this instance.');
   app.quit();
-});
+} else {
+  // 创建App实例
+  const appInstance = new App();
+  
+  // 当尝试运行第二个实例时，激活第一个实例的窗口
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    console.log('Second instance detected, showing existing window');
+    // 尝试通过窗口管理器显示主窗口
+    const mainWindow = appInstance.getWindowManager().getMainWindow();
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show(); // 显示隐藏的窗口
+      mainWindow.focus();
+    } else {
+      // 如果主窗口不存在，创建新的主窗口
+      appInstance.getWindowManager().createMainWindow();
+    }
+  });
+
+  appInstance.init().catch(error => {
+    console.error('Failed to initialize app:', error);
+    app.quit();
+  });
+}
