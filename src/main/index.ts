@@ -22,6 +22,12 @@ class App {
     // 初始化模块
     await this.moduleManager.init();
     
+    // 设置配置模块到窗口管理器
+    const configModule = this.moduleManager.getModule('ConfigModule');
+    if (configModule) {
+      this.windowManager.setConfigModule(configModule);
+    }
+    
     // 设置IPC处理器（现在模块已经初始化）
     this.ipcManager.setupHandlers();
     
@@ -37,6 +43,12 @@ class App {
       mainWindow.webContents.openDevTools();
     }
     
+    // 设置应用退出时的处理
+    app.on('before-quit', () => {
+      app.isQuitting = true;
+      this.windowManager.destroyTray();
+    });
+
     // 当所有窗口关闭时退出应用（macOS除外）
     app.on('window-all-closed', () => {
       if (process.platform !== 'darwin') {

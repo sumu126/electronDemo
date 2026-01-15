@@ -39,6 +39,9 @@ export class ConfigModule {
         analytics: true,
         autoUpdate: true,
       },
+      tray: {
+        hasShownFirstTimeNotice: false,
+      },
     };
   }
 

@@ -6,6 +6,7 @@ export interface AppConfig {
   language: string;
   window: WindowConfig;
   features: FeatureFlags;
+  tray: TrayConfig;
 }
 
 export interface WindowConfig {
@@ -20,6 +21,10 @@ export interface FeatureFlags {
   developerTools: boolean;
   analytics: boolean;
   autoUpdate: boolean;
+}
+
+export interface TrayConfig {
+  hasShownFirstTimeNotice: boolean;
 }
 
 // IPC通信相关类型
