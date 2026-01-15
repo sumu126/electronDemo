@@ -14,6 +14,7 @@ export class WindowManager {
       height: Math.min(800, height - 50),
       minWidth: 800,
       minHeight: 600,
+      frame: false, // 去除窗口边框和系统菜单
       webPreferences: {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
