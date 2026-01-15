@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, Rectangle, Tray, Menu, nativeImage, app } from 'electron';
+import { BrowserWindow, screen, Rectangle, Tray, Menu, nativeImage, app, Notification } from 'electron';
 import { join } from 'path';
 
 import { ConfigModule } from '../modules/config.module';
@@ -117,16 +117,31 @@ export class WindowManager {
     }
 
     // 创建托盘图标
-    const iconPath = join(app.getAppPath(), 'assets/icon.ico');
+    let iconPath = join(app.getAppPath(), 'assets/icon.ico');
     console.log('Tray icon path:', iconPath);
+    
+    // 检查图标文件是否存在
+    const fs = require('fs');
+    if (!fs.existsSync(iconPath)) {
+      console.error('Tray icon file does not exist:', iconPath);
+      // 尝试使用PNG图标
+      const pngIconPath = join(app.getAppPath(), 'assets/icon.png');
+      if (fs.existsSync(pngIconPath)) {
+        console.log('Using PNG icon instead:', pngIconPath);
+        iconPath = pngIconPath;
+      } else {
+        console.error('PNG icon also not found:', pngIconPath);
+      }
+    }
     
     try {
       const trayIcon = nativeImage.createFromPath(iconPath);
       if (trayIcon.isEmpty()) {
-        console.error('Failed to load tray icon from path:', iconPath);
+        console.error('Failed to load tray icon from path:', iconPath, 'Icon is empty');
         // 使用默认图标
         this.tray = new Tray(nativeImage.createEmpty());
       } else {
+        console.log('Tray icon loaded successfully, size:', trayIcon.getSize());
         this.tray = new Tray(trayIcon);
       }
     } catch (error) {
@@ -173,48 +188,106 @@ export class WindowManager {
       }
     });
 
-    // 首次设置托盘时显示提醒
-    this.checkAndShowFirstTrayNotification();
+    // 设置托盘时显示提醒
+    this.checkAndShowTrayNotification();
   }
 
-  private async checkAndShowFirstTrayNotification(): Promise<void> {
+  private async checkAndShowTrayNotification(): Promise<void> {
     if (!this.configModule) {
       console.error('Config module not set, cannot check tray notification status');
+      // 即使配置模块未设置也显示通知
+      this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
       return;
     }
 
     try {
       const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
       if (!hasShown) {
-        this.showFirstTrayNotification();
-        // 更新配置，标记已显示过提醒
+        // 第一次显示通知，并标记已显示
+        this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
         await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
+      } else {
+        // 非第一次，显示简短的提示
+        this.showTrayNotification('Application minimized', 'Click tray icon to restore');
       }
     } catch (error) {
       console.error('Error checking or updating tray notification status:', error);
+      // 即使配置检查失败也显示通知
+      this.showTrayNotification('Application minimized to tray', 'Click the tray icon to restore the window');
     }
   }
 
-  private showFirstTrayNotification(): void {
-    if (this.tray) {
+  private showTrayNotification(title: string, content: string): void {
+    if (!this.tray) {
+      console.error('Tray not initialized, cannot show balloon notification');
+      return;
+    }
+
+    // 使用Windows气球通知，这是用户期望的功能
+    try {
+      const iconPath = join(app.getAppPath(), 'assets/icon.ico');
+      const notificationIcon = nativeImage.createFromPath(iconPath);
+      
+      console.log('Attempting to display Windows balloon notification...');
+      console.log('Tray object:', this.tray);
+      console.log('Icon path:', iconPath);
+      console.log('Icon loaded:', !notificationIcon.isEmpty());
+      
+      // 显示Windows气球通知
+      this.tray.displayBalloon({
+        title: title,
+        content: content,
+        icon: notificationIcon,
+        respectQuietTime: false, // 不尊重安静时间，确保通知显示
+        noSound: false           // 启用声音，确保通知可见
+      });
+      
+      console.log('Windows balloon notification should be displayed:', title);
+      
+    } catch (error) {
+      console.error('Error displaying Windows balloon notification:', error);
+      
+      // 备用方案：尝试不带图标的通知
       try {
-        const iconPath = join(app.getAppPath(), 'assets/icon.ico');
-        const notificationIcon = nativeImage.createFromPath(iconPath);
+        console.log('Trying fallback balloon notification without icon...');
+        this.tray.displayBalloon({
+          title: title,
+          content: content,
+          respectQuietTime: false,
+          noSound: false
+        });
+        console.log('Fallback balloon notification should be displayed');
+      } catch (fallbackError) {
+        console.error('Fallback balloon notification also failed:', fallbackError);
         
-        this.tray.displayBalloon({
-          title: '应用已最小化到托盘',
-          content: '点击托盘图标可以重新显示窗口',
-          icon: notificationIcon.isEmpty() ? undefined : notificationIcon
-        });
-        console.log('First tray notification displayed');
-      } catch (error) {
-        console.error('Error displaying tray notification:', error);
-        // 即使图标加载失败也显示提示框
-        this.tray.displayBalloon({
-          title: '应用已最小化到托盘',
-          content: '点击托盘图标可以重新显示窗口'
-        });
+        // 最终备用：使用系统通知
+        this.showSystemNotification(title, content);
       }
+    }
+  }
+
+  private showSystemNotification(title: string, content: string): void {
+    try {
+      // 检查是否支持系统通知
+      if (!Notification.isSupported()) {
+        console.warn('System notifications not supported');
+        return;
+      }
+
+      // 创建系统通知作为最后的手段
+      const notification = new Notification({
+        title: title,
+        body: content,
+        icon: join(app.getAppPath(), 'assets/icon.ico'),
+        silent: false // 启用声音
+      });
+
+      notification.show();
+      console.log('System notification displayed as final fallback');
+      
+    } catch (error) {
+      console.error('Error displaying system notification:', error);
+      console.log(`[Final Fallback] ${title}: ${content}`);
     }
   }
 
