@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Electron + Vue3 Application Framework",
   "main": "dist-electron/main.cjs",
-  "author": "Electron-Vue3 Framework",
+  "author": "sumu126",
   "scripts": {
     "dev": "vite",
     "build": "node ./build.mjs",
