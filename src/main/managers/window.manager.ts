@@ -219,75 +219,22 @@ export class WindowManager {
 
   private showTrayNotification(title: string, content: string): void {
     if (!this.tray) {
-      console.error('Tray not initialized, cannot show balloon notification');
+      console.error('Tray not initialized');
       return;
     }
 
-    // 使用Windows气球通知，这是用户期望的功能
     try {
-      const iconPath = join(app.getAppPath(), 'assets/icon.ico');
-      const notificationIcon = nativeImage.createFromPath(iconPath);
-      
-      console.log('Attempting to display Windows balloon notification...');
-      console.log('Tray object:', this.tray);
-      console.log('Icon path:', iconPath);
-      console.log('Icon loaded:', !notificationIcon.isEmpty());
-      
-      // 显示Windows气球通知
+      // 使用Windows气球通知
       this.tray.displayBalloon({
         title: title,
         content: content,
-        icon: notificationIcon,
-        respectQuietTime: false, // 不尊重安静时间，确保通知显示
-        noSound: false           // 启用声音，确保通知可见
+        icon: nativeImage.createFromPath(join(app.getAppPath(), 'assets/icon.ico'))
       });
       
-      console.log('Windows balloon notification should be displayed:', title);
+      console.log('Tray notification displayed');
       
     } catch (error) {
-      console.error('Error displaying Windows balloon notification:', error);
-      
-      // 备用方案：尝试不带图标的通知
-      try {
-        console.log('Trying fallback balloon notification without icon...');
-        this.tray.displayBalloon({
-          title: title,
-          content: content,
-          respectQuietTime: false,
-          noSound: false
-        });
-        console.log('Fallback balloon notification should be displayed');
-      } catch (fallbackError) {
-        console.error('Fallback balloon notification also failed:', fallbackError);
-        
-        // 最终备用：使用系统通知
-        this.showSystemNotification(title, content);
-      }
-    }
-  }
-
-  private showSystemNotification(title: string, content: string): void {
-    try {
-      // 检查是否支持系统通知
-      if (!Notification.isSupported()) {
-        console.warn('System notifications not supported');
-        return;
-      }
-
-      // 创建系统通知作为最后的手段
-      const notification = new Notification({
-        title: title,
-        body: content,
-        icon: join(app.getAppPath(), 'assets/icon.ico'),
-        silent: false // 启用声音
-      });
-
-      notification.show();
-      console.log('System notification displayed as final fallback');
-      
-    } catch (error) {
-      console.error('Error displaying system notification:', error);
-      console.log(`[Final Fallback] ${title}: ${content}`);
+      console.error('Tray notification failed:', error);
     }
   }
 
