@@ -1,7 +1,12 @@
 import { BrowserWindow, screen, Rectangle, Tray, Menu, nativeImage, app, Notification } from 'electron';
 import { join } from 'path';
+import * as dotenv from 'dotenv';
 
 import { ConfigModule } from '../modules/config.module';
+
+// 加载环境变量 - 使用绝对路径确保正确找到文件
+const envPath = join(app.getAppPath(), '.env');
+dotenv.config({ path: envPath });
 
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
@@ -120,34 +125,26 @@ export class WindowManager {
 
     // 创建托盘图标
     let iconPath = join(app.getAppPath(), 'assets/icon.ico');
-    console.log('Tray icon path:', iconPath);
     
     // 检查图标文件是否存在
     const fs = require('fs');
     if (!fs.existsSync(iconPath)) {
-      console.error('Tray icon file does not exist:', iconPath);
       // 尝试使用PNG图标
       const pngIconPath = join(app.getAppPath(), 'assets/icon.png');
       if (fs.existsSync(pngIconPath)) {
-        console.log('Using PNG icon instead:', pngIconPath);
         iconPath = pngIconPath;
-      } else {
-        console.error('PNG icon also not found:', pngIconPath);
       }
     }
     
     try {
       const trayIcon = nativeImage.createFromPath(iconPath);
       if (trayIcon.isEmpty()) {
-        console.error('Failed to load tray icon from path:', iconPath, 'Icon is empty');
         // 使用默认图标
         this.tray = new Tray(nativeImage.createEmpty());
       } else {
-        console.log('Tray icon loaded successfully, size:', trayIcon.getSize());
         this.tray = new Tray(trayIcon);
       }
     } catch (error) {
-      console.error('Error creating tray icon:', error);
       // 使用默认图标
       this.tray = new Tray(nativeImage.createEmpty());
     }
@@ -195,25 +192,60 @@ export class WindowManager {
   }
 
   private async checkAndShowTrayNotification(): Promise<void> {
-    // 每次窗口关闭到托盘时都显示通知
-    this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+    // 直接读取.env文件内容，避免dotenv问题
+    const fs = require('fs');
+    const envPath = join(app.getAppPath(), '.env');
     
-    // 如果是第一次，标记已显示过
-    if (this.configModule) {
-      try {
-        const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
-        if (!hasShown) {
-          await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
+    let enableBalloonNotification = true; // 默认启用
+    
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        
+        // 解析环境变量
+        const lines = envContent.split('\n');
+        for (const line of lines) {
+          if (line.trim() && !line.startsWith('#')) {
+            const [key, value] = line.split('=');
+            if (key && value) {
+              if (key.trim() === 'BALLOON_NOTIFICATION_ENABLED') {
+                enableBalloonNotification = value.trim() === 'true';
+                break;
+              }
+            }
+          }
         }
-      } catch (error) {
-        console.error('Error updating tray notification status:', error);
       }
+    } catch (error) {
+      console.error('Error reading .env file:', error);
+    }
+    
+    if (!enableBalloonNotification) {
+      // 如果配置为false，只在第一次显示通知
+      if (this.configModule) {
+        try {
+          const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
+          if (!hasShown) {
+            this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+            await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
+          }
+        } catch (error) {
+          console.error('Error checking tray notification status:', error);
+          // 出错时显示通知
+          this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+        }
+      } else {
+        // 配置模块未设置时显示通知
+        this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      }
+    } else {
+      // 如果配置为true，每次关闭都显示通知
+      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
     }
   }
 
   private showTrayNotification(title: string, content: string): void {
     if (!this.tray) {
-      console.error('Tray not initialized');
       return;
     }
 
@@ -225,10 +257,8 @@ export class WindowManager {
         icon: nativeImage.createFromPath(join(app.getAppPath(), 'assets/icon.ico'))
       });
       
-      console.log('Tray notification displayed');
-      
     } catch (error) {
-      console.error('Tray notification failed:', error);
+      // 忽略通知错误
     }
   }
 
