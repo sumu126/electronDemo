@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "node ./build.mjs",
     "preview": "vite preview",
-    "electron:dev": "concurrently -k \"npm run dev\" \"powershell -Command Start-Sleep 5; npx electron . --no-sandbox\"",
+    "electron:dev": "concurrently -k -n \"VITE,ELECTRON\" \"npm run dev\" \"node scripts/delay-electron.js\"",
     "electron:build": "npm run build && electron-builder --dir",
     "electron:build-win": "npm run build && electron-builder --win --config",
     "electron:build-win-simple": "node build-app.js",
