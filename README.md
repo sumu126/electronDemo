@@ -24,20 +24,21 @@
 ## 📁 项目结构
 
 ```
-electron-vue3-framework/
+electron-vue3-demo/
 ├── src/
 │   ├── main/                 # 主进程代码
 │   │   ├── index.ts          # 主进程入口
 │   │   ├── managers/         # 管理器类
 │   │   │   ├── window.manager.ts    # 窗口管理器
-│   │   │   ├── module.manager.ts    # 模块管理器
-│   │   │   └── ipc.manager.ts       # IPC 管理器
+│   │   │   └── module.manager.ts    # 模块管理器
 │   │   ├── ipc/              # IPC 处理器
-│   │   │   ├── ipc.manager.ts       # IPC 管理器
+│   │   │   ├── base.handler.ts      # 基础处理器
 │   │   │   ├── system.handler.ts    # 系统处理器
 │   │   │   ├── config.handler.ts    # 配置处理器
 │   │   │   ├── file.handler.ts      # 文件处理器
 │   │   │   └── window.handler.ts    # 窗口处理器
+│   │   ├── ipc-manager/      # IPC 管理器
+│   │   │   └── ipc.manager.ts       # IPC 通道注册与管理
 │   │   └── modules/          # 核心模块
 │   │       └── config.module.ts     # 配置模块
 │   ├── renderer/             # 渲染进程代码
@@ -72,6 +73,8 @@ electron-vue3-framework/
 ├── assets/                   # 静态资源
 │   ├── icon.ico              # 应用图标 (Windows)
 │   └── icon.png              # 应用图标
+├── scripts/                  # 辅助脚本
+│   └── delay-electron.js     # 延迟启动 Electron 脚本
 ├── dist-electron/            # 主进程构建输出
 ├── dist/                     # 渲染进程构建输出
 ├── .env                      # 环境变量配置
@@ -80,6 +83,7 @@ electron-vue3-framework/
 ├── tsconfig.json             # TypeScript 配置
 ├── build.mjs                 # 构建脚本
 ├── build-app.js              # 应用打包脚本
+├── LICENSE                   # MIT 许可证
 └── index.html                # HTML 模板
 ```
 
@@ -96,7 +100,7 @@ electron-vue3-framework/
 ```bash
 # 克隆项目
 git clone <repository-url>
-cd electron-vue3-framework
+cd electron-vue3-demo
 
 # 安装依赖
 npm install
@@ -109,7 +113,7 @@ yarn install
 
 #### 推荐方式（一体化启动）
 ```bash
-# 同时启动开发服务器和 Electron 应用
+# 构建应用并同时启动开发服务器和 Electron 应用
 npm run electron:dev
 ```
 
@@ -158,7 +162,7 @@ npm run electron:build-win-simple
   - 非一键安装模式
 
 ### 输出目录
-- **安装包**: `dist-app/Electron Vue3 Framework Setup [version].exe`
+- **安装包**: `dist-app/electron-vue3-demo Setup [version].exe`
 - **解包应用**: `dist-app/win-unpacked/`
 
 ### 资源管理
@@ -166,116 +170,53 @@ npm run electron:build-win-simple
 - **静态资源**: 自动包含在打包文件中
 - **环境变量**: 支持开发和生产环境配置
 
-## 🔧 核心功能详解
+## 🎯 开发教程
 
-### 模块系统
+### 1. 环境搭建
 
-框架内置模块化系统，支持动态加载和生命周期管理：
+#### 步骤 1: 安装 Node.js
+访问 [Node.js 官网](https://nodejs.org/) 下载并安装最新的 LTS 版本。
 
-```typescript
-// 自定义模块示例
-const customModule = {
-  name: 'CustomModule',
-  dependencies: ['ConfigModule'],
-  
-  async init(): Promise<void> {
-    // 模块初始化逻辑
-    console.log('CustomModule initialized');
-  },
-  
-  async destroy(): Promise<void> {
-    // 模块销毁逻辑
-    console.log('CustomModule destroyed');
-  },
-  
-  // 模块提供的 API
-  getData(): any {
-    return { message: 'Hello from CustomModule' };
-  }
-};
-
-// 注册模块
-moduleManager.register(customModule);
+#### 步骤 2: 克隆项目
+```bash
+git clone <repository-url>
+cd electron-vue3-demo
 ```
 
-### IPC 通信机制
-
-安全的进程间通信，基于预加载脚本：
-
-#### 渲染进程调用主进程
-```typescript
-// 调用主进程方法（带返回值）
-const systemInfo = await window.electronAPI.invoke('system:get-info');
-
-// 发送消息到主进程（无返回值）
-window.electronAPI.send('window:minimize');
-
-// 监听主进程消息
-window.electronAPI.on('config:updated', (event, newConfig) => {
-  console.log('配置已更新:', newConfig);
-});
+#### 步骤 3: 安装依赖
+```bash
+npm install
 ```
 
-#### 主进程处理器注册
-```typescript
-// 注册 IPC 处理器
-ipcManager.registerHandler({
-  channel: 'custom:operation',
-  handler: async (event, ...args) => {
-    // 处理逻辑
-    return { success: true, data: '操作完成' };
-  }
-});
-```
+### 2. 项目结构详解
 
-### 配置管理系统
+#### 主进程 (`src/main/`)
+- **index.ts**: 主进程入口，负责应用初始化和生命周期管理
+- **managers/**: 核心管理器，包括窗口管理和模块管理
+- **ipc/**: IPC 处理器，负责处理渲染进程的请求
+- **ipc-manager/**: IPC 管理器，负责注册和管理所有 IPC 通道
+- **modules/**: 核心功能模块，如配置管理
 
-统一的配置管理，支持持久化存储和实时同步：
+#### 渲染进程 (`src/renderer/`)
+- **main.ts**: Vue 应用入口
+- **App.vue**: 根组件
+- **components/**: Vue 组件
+- **composables/**: 组合式 API 函数
+- **stores/**: Pinia 状态管理
+- **services/**: 前端服务层
+- **utils/**: 工具函数
 
-```typescript
-// 获取配置
-const currentConfig = configService.getConfig();
-const theme = configService.getValue('theme');
+#### 预加载脚本 (`src/preload/`)
+- **index.ts**: 预加载脚本，安全暴露 API 给渲染进程
 
-// 更新配置
-await configService.updateConfig({
-  theme: 'dark',
-  language: 'zh-CN'
-});
+#### 共享代码 (`src/shared/`)
+- **constants/**: 常量定义
+- **types/**: TypeScript 类型定义
+- **utils/**: 共享工具函数
 
-// 监听配置变化
-const unsubscribe = configService.subscribe((newConfig) => {
-  console.log('配置发生变化:', newConfig);
-});
+### 3. 核心功能开发
 
-// 在 Vue 组件中使用
-const { config, updateConfig, loading } = useConfig();
-```
-
-### 窗口管理功能
-
-强大的窗口管理能力：
-
-```typescript
-// 创建新窗口
-const newWindow = windowManager.createWindow('settings', {
-  width: 800,
-  height: 600,
-  title: '设置'
-});
-
-// 窗口事件处理
-windowManager.on('window-created', (windowId) => {
-  console.log(`窗口已创建: ${windowId}`);
-});
-
-// 系统托盘支持
-windowManager.setupTray();
-```
-
-## 🎯 开发指南
-
-### 添加新功能模块
+#### 添加新功能模块
 
 1. **创建模块文件**
 ```typescript
@@ -291,38 +232,143 @@ export class YourModule {
 }
 ```
 
-2. **注册 IPC 处理器**
+2. **注册模块**
+在 `src/main/managers/module.manager.ts` 的 `loadCoreModules` 方法中添加：
+```typescript
+// 注册自定义模块
+const yourModule = new YourModule();
+await this.registerModule(yourModule);
+```
+
+3. **创建 IPC 处理器**
 ```typescript
 // src/main/ipc/your-module.handler.ts
-export class YourModuleHandler {
-  // 处理器实现...
+import { IpcMainInvokeEvent } from 'electron';
+import { BaseIpcHandler } from './base.handler';
+
+export class YourModuleHandler extends BaseIpcHandler {
+  async yourMethod(event: IpcMainInvokeEvent, params: any): Promise<any> {
+    return this.handleAsync<any>(() => {
+      // 处理逻辑
+      return Promise.resolve({ result: 'success' });
+    }).then(response => {
+      if (!response.success) {
+        throw new Error(response.error!);
+      }
+      return response.data!;
+    });
+  }
 }
 ```
 
-3. **在前端添加对应服务**
+4. **注册 IPC 通道**
+在 `src/main/ipc-manager/ipc.manager.ts` 中：
 ```typescript
-// src/renderer/services/your-module.service.ts
-export class YourModuleService {
-  // 服务方法...
+// 1. 导入处理器
+import { YourModuleHandler } from '../ipc/your-module.handler';
+
+// 2. 添加处理器实例
+private yourModuleHandler: YourModuleHandler;
+
+// 3. 在构造函数中初始化
+constructor(ipcMain: IpcMain, moduleManager: ModuleManager) {
+  // 现有代码...
+  this.yourModuleHandler = new YourModuleHandler();
+}
+
+// 4. 添加注册方法
+private registerYourModuleHandlers(): void {
+  this.registerHandler({
+    channel: 'your-module:method',
+    handler: (event: IpcMainInvokeEvent, params: any): Promise<any> => {
+      return this.yourModuleHandler.yourMethod(event, params);
+    },
+  });
+}
+
+// 5. 在 setupHandlers 中调用
+public setupHandlers(): void {
+  // 现有代码...
+  this.registerYourModuleHandlers();
 }
 ```
 
-### 自定义构建配置
-
-修改 `vite.config.ts` 来自定义构建行为：
-
+5. **在预加载脚本中添加 API**
 ```typescript
-// 自定义渲染进程配置
-const customRendererConfig = defineConfig({
-  // 添加插件、配置别名等
-  plugins: [
-    vue(),
-    // 其他插件...
-  ],
-  build: {
-    // 构建配置...
+// src/preload/index.ts
+contextBridge.exposeInMainWorld('electronAPI', {
+  // 现有代码...
+  
+  // 自定义模块 API
+  yourModuleMethod: (params: any) => ipcRenderer.invoke('your-module:method', params),
+});
+```
+
+6. **在前端使用**
+```typescript
+// 在 Vue 组件中
+const result = await window.electronAPI.yourModuleMethod({ param1: 'value1' });
+console.log('Result:', result);
+```
+
+### 4. 窗口管理
+
+#### 创建新窗口
+```typescript
+// 在主进程中
+const newWindow = windowManager.createWindow('settings', {
+  width: 800,
+  height: 600,
+  title: '设置',
+  webPreferences: {
+    // 配置...
   }
 });
+
+// 加载内容
+newWindow.loadURL('http://localhost:5173#settings');
+```
+
+#### 系统托盘操作
+```typescript
+// 主进程中已自动设置
+// 当窗口关闭时，应用会最小化到托盘
+// 点击托盘图标可显示/隐藏窗口
+```
+
+### 5. 配置管理
+
+#### 获取和更新配置
+```typescript
+// 在渲染进程中
+import { useConfig } from '@/composables/useConfig';
+
+const { config, updateConfig, loading } = useConfig();
+
+// 获取配置
+console.log('Current config:', config.value);
+
+// 更新配置
+await updateConfig({ appName: 'My App' });
+```
+
+### 6. 系统信息获取
+
+```typescript
+// 在渲染进程中
+const systemInfo = await window.electronAPI.getSystemInfo();
+console.log('System Info:', systemInfo);
+```
+
+### 7. 文件操作
+
+```typescript
+// 在渲染进程中
+// 读取文件
+const content = await window.electronAPI.readFile('path/to/file.txt');
+
+// 写入文件
+await window.electronAPI.writeFile('path/to/file.txt', 'Hello World!');
 ```
 
 ## 🐛 故障排除
@@ -384,8 +430,8 @@ electron . --inspect=9229
 
 #### ModuleManager
 - `init(): Promise<void>` - 初始化所有模块
-- `register(module: BaseModule): void` - 注册模块
-- `getModule(name: string): BaseModule | null` - 获取模块
+- `registerModule(module: Module): void` - 注册模块
+- `getModule(name: string): Module | undefined` - 获取模块
 
 ### 渲染进程 API
 
@@ -393,11 +439,12 @@ electron . --inspect=9229
 - `invoke(channel: string, ...args: any[]): Promise<any>` - 调用主进程方法
 - `send(channel: string, ...args: any[]): void` - 发送消息到主进程
 - `on(channel: string, listener: Function): void` - 监听主进程消息
-
-#### 配置服务
-- `getConfig(): AppConfig` - 获取完整配置
-- `updateConfig(updates: Partial<AppConfig>): Promise<void>` - 更新配置
-- `subscribe(callback: ConfigCallback): Unsubscribe` - 监听配置变化
+- `getSystemInfo(): Promise<any>` - 获取系统信息
+- `readFile(filePath: string): Promise<string>` - 读取文件
+- `writeFile(filePath: string, data: string): Promise<void>` - 写入文件
+- `minimizeWindow(): Promise<void>` - 最小化窗口
+- `maximizeWindow(): Promise<void>` - 最大化/还原窗口
+- `closeWindow(): Promise<void>` - 关闭窗口
 
 ## 🤝 贡献指南
 
@@ -419,6 +466,10 @@ electron . --inspect=9229
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
+## 👨‍💻 作者
+
+- **sumu126** - 项目维护者
+
 ## 🙏 致谢
 
 感谢以下开源项目的支持：
@@ -426,6 +477,7 @@ electron . --inspect=9229
 - [Vue.js](https://vuejs.org/) - 渐进式 JavaScript 框架
 - [Vite](https://vitejs.dev/) - 下一代前端构建工具
 - [TypeScript](https://www.typescriptlang.org/) - JavaScript 的超集
+- [Pinia](https://pinia.vuejs.org/) - 轻量级状态管理库
 
 ---
 
