@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { WindowManager } from './managers/window.manager';
-import { IpcManager } from './ipc/ipc.manager';
+import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
 
 class App {

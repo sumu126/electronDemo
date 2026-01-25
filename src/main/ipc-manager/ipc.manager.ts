@@ -1,8 +1,8 @@
 import { IpcMain, IpcMainInvokeEvent } from 'electron';
-import { SystemInfoHandler } from './system.handler';
-import { ConfigHandler } from './config.handler';
-import { FileHandler } from './file.handler';
-import { WindowHandler } from './window.handler';
+import { SystemInfoHandler } from '../ipc/system.handler';
+import { ConfigHandler } from '../ipc/config.handler';
+import { FileHandler } from '../ipc/file.handler';
+import { WindowHandler } from '../ipc/window.handler';
 import { IPC_CHANNELS } from '@shared/constants';
 import { ModuleManager } from '../managers/module.manager';
 import { ConfigModule } from '../modules/config.module';
