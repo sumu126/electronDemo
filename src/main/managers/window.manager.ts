@@ -1,4 +1,5 @@
-import { BrowserWindow, screen, Rectangle, Tray, Menu, nativeImage, app, Notification } from 'electron';
+import { BrowserWindow, screen, Tray, Menu, nativeImage, app } from 'electron';
+import fs from 'fs';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
@@ -147,7 +148,6 @@ export class WindowManager {
     let iconPath = join(app.getAppPath(), 'assets/icon.ico');
     
     // 检查图标文件是否存在
-    const fs = require('fs');
     if (!fs.existsSync(iconPath)) {
       // 尝试使用PNG图标
       const pngIconPath = join(app.getAppPath(), 'assets/icon.png');
@@ -164,7 +164,7 @@ export class WindowManager {
       } else {
         this.tray = new Tray(trayIcon);
       }
-    } catch (error) {
+    } catch {
       // 使用默认图标
       this.tray = new Tray(nativeImage.createEmpty());
     }
@@ -213,7 +213,6 @@ export class WindowManager {
 
   private async checkAndShowTrayNotification(): Promise<void> {
     // 直接读取.env文件内容，避免dotenv问题
-    const fs = require('fs');
     const envPath = join(app.getAppPath(), '.env');
     
     let enableBalloonNotification = true; // 默认启用
@@ -277,7 +276,7 @@ export class WindowManager {
         icon: nativeImage.createFromPath(join(app.getAppPath(), 'assets/icon.ico'))
       });
       
-    } catch (error) {
+    } catch {
       // 忽略通知错误
     }
   }

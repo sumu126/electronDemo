@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 
 /**
  * 使用系统信息

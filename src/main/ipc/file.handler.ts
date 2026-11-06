@@ -2,23 +2,21 @@ import { IpcMainInvokeEvent, app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 import { BaseIpcHandler } from '../ipc/base.handler';
-import { IPC_CHANNELS } from '@shared/constants';
+import { isPathInside } from '@shared/utils/path';
 
 export class FileHandler extends BaseIpcHandler {
   // 将渲染进程传入的路径限制在 userData 目录内，防止任意文件读写
   private resolveUserDataPath(filePath: string): string {
-    const root = path.resolve(app.getPath('userData'));
-    const target = path.resolve(root, filePath);
-    const relativePath = path.relative(root, target);
+    const root = app.getPath('userData');
 
-    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    if (!isPathInside(root, filePath)) {
       throw new Error('Access denied: file path is outside the user data directory');
     }
 
-    return target;
+    return path.resolve(root, filePath);
   }
 
-  async readFile(event: IpcMainInvokeEvent, filePath: string): Promise<string> {
+  async readFile(_event: IpcMainInvokeEvent, filePath: string): Promise<string> {
     return this.handleAsync<string>(async () => {
       const safePath = this.resolveUserDataPath(filePath);
       const data = await fs.readFile(safePath, 'utf-8');
@@ -31,7 +29,7 @@ export class FileHandler extends BaseIpcHandler {
     });
   }
 
-  async writeFile(event: IpcMainInvokeEvent, filePath: string, data: string): Promise<void> {
+  async writeFile(_event: IpcMainInvokeEvent, filePath: string, data: string): Promise<void> {
     return this.handleAsync<void>(async () => {
       const safePath = this.resolveUserDataPath(filePath);
 

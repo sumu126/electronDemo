@@ -1,7 +1,6 @@
 import { IpcMainInvokeEvent } from 'electron';
 import { BaseIpcHandler } from '../ipc/base.handler';
 import { AppConfig } from '@shared/types';
-import { IPC_CHANNELS } from '@shared/constants';
 import { ConfigModule } from '../modules/config.module';
 
 export class ConfigHandler extends BaseIpcHandler {
@@ -12,7 +11,7 @@ export class ConfigHandler extends BaseIpcHandler {
     this.configModule = configModule;
   }
 
-  async getConfig(event: IpcMainInvokeEvent): Promise<AppConfig> {
+  async getConfig(_event: IpcMainInvokeEvent): Promise<AppConfig> {
     return this.handleAsync<AppConfig>(() => {
       return Promise.resolve(this.configModule.getConfig());
     }).then(response => {
@@ -23,7 +22,7 @@ export class ConfigHandler extends BaseIpcHandler {
     });
   }
 
-  async updateConfig(event: IpcMainInvokeEvent, updates: Partial<AppConfig>): Promise<void> {
+  async updateConfig(_event: IpcMainInvokeEvent, updates: Partial<AppConfig>): Promise<void> {
     return this.handleAsync<void>(() => {
       return this.configModule.updateConfig(updates);
     }).then(response => {
@@ -32,9 +31,5 @@ export class ConfigHandler extends BaseIpcHandler {
       }
       return response.data!;
     });
-  }
-
-  registerHandlers(): void {
-    // 注册配置相关的处理器
   }
 }

@@ -1,6 +1,5 @@
 import { IpcMainInvokeEvent, BrowserWindow } from 'electron';
 import { BaseIpcHandler } from '../ipc/base.handler';
-import { IPC_CHANNELS } from '@shared/constants';
 
 export class WindowHandler extends BaseIpcHandler {
   private getWindowByEvent(event: IpcMainInvokeEvent): BrowserWindow | null {

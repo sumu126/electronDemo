@@ -77,7 +77,7 @@ export const objectToQueryString = (obj: Record<string, any>): string => {
   const pairs: string[] = [];
   
   for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = obj[key];
       if (value !== null && value !== undefined) {
         pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
@@ -140,3 +140,29 @@ export const debounce = <T extends (...args: any[]) => any>(func: T, wait: numbe
     timeout = setTimeout(later, wait);
   };
 };
+
+/**
+ * 深度合并对象
+ */
+export function deepMerge(target: any, source: any): any {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      if (
+        typeof source[key] === 'object' &&
+        source[key] !== null &&
+        !Array.isArray(source[key]) &&
+        typeof target[key] === 'object' &&
+        target[key] !== null &&
+        !Array.isArray(target[key])
+      ) {
+        result[key] = deepMerge(target[key], source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+  }
+
+  return result;
+}

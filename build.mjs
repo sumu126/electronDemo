@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { execa } from 'execa';
 import { build } from 'vite';
 import { join } from 'path';
 import { rm, mkdir, readFile, writeFile } from 'fs/promises';
@@ -61,7 +60,7 @@ async function main() {
     try {
       await rm('./dist', { recursive: true, force: true });
       await rm('./dist-electron', { recursive: true, force: true });
-    } catch (error) {
+    } catch {
       console.log('No previous build to clean.');
     }
     

@@ -1,4 +1,3 @@
-import { IpcMainInvokeEvent } from 'electron';
 import { IpcResponse } from '@shared/types';
 
 export abstract class BaseIpcHandler {

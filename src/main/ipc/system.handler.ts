@@ -2,10 +2,9 @@ import { IpcMainInvokeEvent } from 'electron';
 import os from 'os';
 import { BaseIpcHandler } from './base.handler';
 import { SystemInfo } from '@shared/types';
-import { IPC_CHANNELS } from '@shared/constants';
 
 export class SystemInfoHandler extends BaseIpcHandler {
-  async getSystemInfo(event: IpcMainInvokeEvent): Promise<SystemInfo> {
+  async getSystemInfo(_event: IpcMainInvokeEvent): Promise<SystemInfo> {
     return this.handleAsync<SystemInfo>(() => {
       return Promise.resolve({
         platform: os.platform(),
@@ -25,9 +24,5 @@ export class SystemInfoHandler extends BaseIpcHandler {
       }
       return response.data!;
     });
-  }
-
-  registerHandlers(): void {
-    // 这里可以注册更多系统相关的处理器
   }
 }

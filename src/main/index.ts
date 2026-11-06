@@ -80,7 +80,7 @@ if (!gotTheLock) {
   const appInstance = new App();
   
   // 当尝试运行第二个实例时，激活第一个实例的窗口
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
+  app.on('second-instance', () => {
     console.log('Second instance detected, showing existing window');
     // 尝试通过窗口管理器显示主窗口
     const mainWindow = appInstance.getWindowManager().getMainWindow();

@@ -69,28 +69,5 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-/**
- * 深度合并对象
- */
-export function deepMerge(target: any, source: any): any {
-  const result = { ...target };
-
-  for (const key in source) {
-    if (source.hasOwnProperty(key)) {
-      if (
-        typeof source[key] === 'object' &&
-        source[key] !== null &&
-        !Array.isArray(source[key]) &&
-        typeof target[key] === 'object' &&
-        target[key] !== null &&
-        !Array.isArray(target[key])
-      ) {
-        result[key] = deepMerge(target[key], source[key]);
-      } else {
-        result[key] = source[key];
-      }
-    }
-  }
-
-  return result;
-}
+// 纯函数工具统一从 helpers 导出，避免依赖 electron
+export { deepMerge } from './helpers';

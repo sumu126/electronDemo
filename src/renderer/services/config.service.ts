@@ -1,4 +1,4 @@
-import { reactive, toRaw } from 'vue';
+import { toRaw } from 'vue';
 import { AppConfig } from '@shared/types';
 import { APP_CONSTANTS } from '@shared/constants';
 
