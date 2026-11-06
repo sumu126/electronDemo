@@ -3,7 +3,13 @@ import fs from 'fs';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
+import type { WindowConfig } from '@shared/types';
 import { ConfigModule } from '../modules/config.module';
+import {
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+  resolveInitialWindowState,
+} from './window-state';
 
 // 加载环境变量 - 使用绝对路径确保正确找到文件
 const envPath = join(app.getAppPath(), '.env');
@@ -15,6 +21,7 @@ export class WindowManager {
   private tray: Tray | null = null;
   private configModule: ConfigModule | null = null;
   private quitting = false;
+  private windowStateTimer: NodeJS.Timeout | null = null;
 
   public setConfigModule(configModule: ConfigModule): void {
     this.configModule = configModule;
@@ -26,13 +33,21 @@ export class WindowManager {
 
   public createMainWindow(): BrowserWindow {
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
+    const savedWindow = this.configModule?.getValue<WindowConfig>('window');
+    const initialState = resolveInitialWindowState(
+      savedWindow,
+      primaryDisplay.workArea,
+      screen.getAllDisplays().map(display => display.workArea),
+    );
 
     this.mainWindow = new BrowserWindow({
-      width: Math.min(1200, width - 50),
-      height: Math.min(800, height - 50),
-      minWidth: 800,
-      minHeight: 600,
+      width: initialState.width,
+      height: initialState.height,
+      ...(initialState.x !== undefined && initialState.y !== undefined
+        ? { x: initialState.x, y: initialState.y }
+        : {}),
+      minWidth: MIN_WINDOW_WIDTH,
+      minHeight: MIN_WINDOW_HEIGHT,
       frame: true, // 保留窗口边框和系统控制按钮
       autoHideMenuBar: true, // 隐藏默认菜单栏
       webPreferences: {
@@ -58,10 +73,19 @@ export class WindowManager {
 
     // 窗口真正关闭事件
     this.mainWindow.on('closed', () => {
+      if (this.windowStateTimer) {
+        clearTimeout(this.windowStateTimer);
+        this.windowStateTimer = null;
+      }
       this.mainWindow = null;
     });
 
     this.loadApp(this.mainWindow);
+    this.registerWindowStateEvents(this.mainWindow);
+
+    if (initialState.maximized) {
+      this.mainWindow.maximize();
+    }
 
     return this.mainWindow;
   }
@@ -77,6 +101,50 @@ export class WindowManager {
       // 在打包版本中，使用资源路径
       window.loadFile(join(process.resourcesPath, 'dist/index.html'));
     }
+  }
+
+  private registerWindowStateEvents(window: BrowserWindow): void {
+    const scheduleSave = () => this.scheduleWindowStateSave();
+
+    window.on('resize', scheduleSave);
+    window.on('move', scheduleSave);
+    window.on('maximize', scheduleSave);
+    window.on('unmaximize', scheduleSave);
+    // 关闭（含最小化到托盘）时立即落盘，避免防抖期间退出导致状态丢失
+    window.on('close', () => this.persistWindowState());
+  }
+
+  private scheduleWindowStateSave(): void {
+    if (this.windowStateTimer) {
+      clearTimeout(this.windowStateTimer);
+    }
+
+    this.windowStateTimer = setTimeout(() => {
+      this.windowStateTimer = null;
+      this.persistWindowState();
+    }, 300);
+  }
+
+  private persistWindowState(): void {
+    const window = this.mainWindow;
+
+    if (!this.configModule || !window || window.isDestroyed()) {
+      return;
+    }
+
+    const bounds = window.getNormalBounds();
+
+    void this.configModule
+      .updateConfig({
+        window: {
+          width: bounds.width,
+          height: bounds.height,
+          x: bounds.x,
+          y: bounds.y,
+          maximized: window.isMaximized(),
+        },
+      })
+      .catch(error => console.error('Failed to save window state:', error));
   }
 
   public createWindow(
