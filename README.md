@@ -177,6 +177,7 @@ npm run electron:build-win   # Windows 安装包：dist-app
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`
 - 打包配置位于 `package.json` 的 `build` 字段
+- 默认关闭自动更新：`publish: null` 且 `nsis.differentialPackage: false`，产物不含 `latest.yml` 与 `.blockmap`；接入方式见[路线图](docs/framework-roadmap.md#自动更新当前不做接口预留)
 
 ## 安全默认
 
