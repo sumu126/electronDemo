@@ -89,7 +89,8 @@ npm run build
 - 删除 localStorage 版 `src/renderer/services/config.service.ts`
 - `ConfigModule.updateConfig` 改为深合并，修复局部更新覆盖同级字段的问题
 - 窗口状态持久化：启动时读取 `config.window`，移动/缩放/最大化后防抖写回，关闭时立即落盘，离屏位置自动丢弃
+- 路由骨架：引入 `vue-router` 4，使用 hash 模式兼容打包后的 `file://`；页面统一放 `views/`，`App.vue` 收敛为 `RouterView`，首页懒加载
 
-验证结果：18 个用例通过；Electron 隔离启动后自动生成 `userData/config.json`，渲染进程无报错；预置 1000×700 / (100,100) 的窗口状态可被正确恢复并在关闭时写回。
+验证结果：20 个用例通过；Electron 隔离启动后自动生成 `userData/config.json`，渲染进程无报错；预置 1000×700 / (100,100) 的窗口状态可被正确恢复并在关闭时写回；路由在 Electron 中正常挂载。
 
-Phase 2 剩余项：路由骨架、模块系统契约化、日志与全局异常、死代码清理。
+Phase 2 剩余项：模块系统契约化、日志与全局异常、死代码清理。
