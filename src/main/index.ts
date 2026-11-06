@@ -1,16 +1,20 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { join } from 'path';
 import { WindowManager } from './managers/window.manager';
 import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
 import { ConfigModule } from './modules/config.module';
+import { Logger } from './utils/logger';
 
 class App {
   private windowManager: WindowManager;
   private moduleManager: ModuleManager;
   private ipcManager: IpcManager;
+  private logger: Logger;
   private isQuitting = false;
 
   constructor() {
+    this.logger = new Logger(join(app.getPath('userData'), 'logs', 'main.log'));
     this.windowManager = new WindowManager();
     this.moduleManager = new ModuleManager();
     // 延迟初始化IPC管理器直到模块被加载
@@ -19,7 +23,8 @@ class App {
 
   public async init(): Promise<void> {
     await app.whenReady();
-    
+    this.logger.info('Application starting');
+
     // 初始化模块
     await this.moduleManager.init();
     
@@ -34,6 +39,7 @@ class App {
     
     // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
     this.windowManager.createMainWindow();
+    this.logger.info('Main window created');
 
     // 设置应用退出时的处理：等待模块清理完成后再真正退出
     app.on('before-quit', (event) => {
@@ -42,11 +48,12 @@ class App {
       }
       this.isQuitting = true;
       event.preventDefault();
+      this.logger.info('Application quitting');
       this.windowManager.markQuitting();
       this.windowManager.destroyTray();
       this.moduleManager
         .destroy()
-        .catch(error => console.error('Failed to destroy modules:', error))
+        .catch(error => this.logger.error('Failed to destroy modules', error))
         .finally(() => app.quit());
     });
 
@@ -67,6 +74,10 @@ class App {
   public getWindowManager(): WindowManager {
     return this.windowManager;
   }
+
+  public getLogger(): Logger {
+    return this.logger;
+  }
 }
 
 // 单实例锁 - 确保只运行一个应用实例
@@ -78,10 +89,21 @@ if (!gotTheLock) {
 } else {
   // 创建App实例
   const appInstance = new App();
-  
+  const logger = appInstance.getLogger();
+
+  // 全局异常兜底：记录后退出，避免静默崩溃
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', error);
+    app.quit();
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection', reason);
+  });
+
   // 当尝试运行第二个实例时，激活第一个实例的窗口
   app.on('second-instance', () => {
-    console.log('Second instance detected, showing existing window');
+    logger.info('Second instance detected, showing existing window');
     // 尝试通过窗口管理器显示主窗口
     const mainWindow = appInstance.getWindowManager().getMainWindow();
     if (mainWindow) {
@@ -97,7 +119,7 @@ if (!gotTheLock) {
   });
 
   appInstance.init().catch(error => {
-    console.error('Failed to initialize app:', error);
+    logger.error('Failed to initialize app', error);
     app.quit();
   });
 }

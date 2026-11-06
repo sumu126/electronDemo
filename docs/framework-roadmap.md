@@ -91,7 +91,8 @@ npm run build
 - 窗口状态持久化：启动时读取 `config.window`，移动/缩放/最大化后防抖写回，关闭时立即落盘，离屏位置自动丢弃
 - 路由骨架：引入 `vue-router` 4，使用 hash 模式兼容打包后的 `file://`；页面统一放 `views/`，`App.vue` 收敛为 `RouterView`，首页懒加载
 - 模块系统契约化：抽出 `Module` 接口与 `ModuleRegistry`（生命周期/失败隔离/卸载），新增 `userData/modules` 目录加载器；核心模块失败中断启动，用户模块失败只隔离自身
+- 日志与全局异常：主进程统一文件日志（`userData/logs/main.log`），捕获 `uncaughtException` / `unhandledRejection`；渲染端增加 `app.config.errorHandler` 与 `unhandledrejection` 兜底
 
-验证结果：30 个用例通过；Electron 隔离启动后自动生成 `userData/config.json`，渲染进程无报错；预置 1000×700 / (100,100) 的窗口状态可被正确恢复并在关闭时写回；路由在 Electron 中正常挂载；在 `userData/modules` 放入 `hello.cjs` 后成功动态加载并初始化。
+验证结果：32 个用例通过；Electron 隔离启动后自动生成 `userData/config.json` 与 `logs/main.log`；预置 1000×700 / (100,100) 的窗口状态可被正确恢复并在关闭时写回；路由正常挂载；`userData/modules` 下的 `hello.cjs` 可动态加载并初始化。
 
-Phase 2 剩余项：日志与全局异常、死代码清理。
+Phase 2 剩余项：死代码清理。
