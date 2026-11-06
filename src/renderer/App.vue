@@ -69,8 +69,8 @@ const toggleDevMode = () => {
 
 const pingBackend = async () => {
   try {
-    const result = await window.electronAPI.invoke('ping');
-    console.log('Ping result:', result);
+    pingResult.value = await window.electronAPI.invoke('ping');
+    console.log('Ping result:', pingResult.value);
   } catch (error) {
     console.error('Ping failed:', error);
   }
@@ -79,8 +79,8 @@ const pingBackend = async () => {
 // 配置面板显示控制
 const showConfigPanel = ref(false);
 
-// 可以在这里定义pingResult等响应式数据
-const pingResult = ref(null);
+// 保存 ping 结果并在开发者工具区域展示
+const pingResult = ref<string | null>(null);
 
 // 在组件挂载时获取应用配置
 onMounted(async () => {

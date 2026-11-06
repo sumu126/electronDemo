@@ -17,17 +17,17 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in data" :key="row.id || index">
+          <tr v-for="(row, index) in displayData" :key="row.id || index">
             <td v-for="column in columns" :key="column.key" :class="column.align ? `text-${column.align}` : ''">
               <template v-if="column.render">
-                <component :is="column.render" :record="row" :index="index" />
+                <component :is="column.render" :record="row" :index="(currentPage - 1) * pageSize + index" />
               </template>
               <template v-else>
                 {{ getNestedValue(row, column.key) }}
               </template>
             </td>
             <td v-if="actions" class="text-center">
-              <slot name="actions" :record="row" :index="index"></slot>
+              <slot name="actions" :record="row" :index="(currentPage - 1) * pageSize + index"></slot>
             </td>
           </tr>
         </tbody>
@@ -91,6 +91,15 @@ const props = withDefaults(defineProps<Props>(), {
 const currentPage = ref(1);
 const total = computed(() => props.data.length);
 const totalPages = computed(() => Math.ceil(total.value / props.pageSize));
+
+// 分页开启时只渲染当前页数据
+const displayData = computed(() => {
+  if (!props.pagination) {
+    return props.data;
+  }
+  const start = (currentPage.value - 1) * props.pageSize;
+  return props.data.slice(start, start + props.pageSize);
+});
 
 const changePage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {

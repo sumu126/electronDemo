@@ -1,13 +1,14 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'path';
 import { WindowManager } from './managers/window.manager';
 import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
+import { ConfigModule } from './modules/config.module';
 
 class App {
   private windowManager: WindowManager;
   private moduleManager: ModuleManager;
   private ipcManager: IpcManager;
+  private isQuitting = false;
 
   constructor() {
     this.windowManager = new WindowManager();
@@ -23,7 +24,7 @@ class App {
     await this.moduleManager.init();
     
     // 设置配置模块到窗口管理器
-    const configModule = this.moduleManager.getModule('ConfigModule');
+    const configModule = this.moduleManager.getModule<ConfigModule>('ConfigModule');
     if (configModule) {
       this.windowManager.setConfigModule(configModule);
     }
@@ -31,22 +32,22 @@ class App {
     // 设置IPC处理器（现在模块已经初始化）
     this.ipcManager.setupHandlers();
     
-    // 创建主窗口
-    const mainWindow = this.windowManager.createMainWindow();
-    
-    // 加载应用
-    if (app.isPackaged) {
-      // 在打包版本中，使用资源路径
-      mainWindow.loadFile(join(process.resourcesPath, 'dist/index.html'));
-    } else {
-      mainWindow.loadURL('http://localhost:5173');
-      mainWindow.webContents.openDevTools();
-    }
-    
-    // 设置应用退出时的处理
-    app.on('before-quit', () => {
-      app.isQuitting = true;
+    // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
+    this.windowManager.createMainWindow();
+
+    // 设置应用退出时的处理：等待模块清理完成后再真正退出
+    app.on('before-quit', (event) => {
+      if (this.isQuitting) {
+        return;
+      }
+      this.isQuitting = true;
+      event.preventDefault();
+      this.windowManager.markQuitting();
       this.windowManager.destroyTray();
+      this.moduleManager
+        .destroy()
+        .catch(error => console.error('Failed to destroy modules:', error))
+        .finally(() => app.quit());
     });
 
     // 当所有窗口关闭时退出应用（macOS除外）

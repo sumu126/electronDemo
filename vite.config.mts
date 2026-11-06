@@ -1,17 +1,20 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { builtinModules } from 'module';
+
+const rootDir = dirname(fileURLToPath(import.meta.url));
 
 // 渲染进程配置
 const rendererConfig = defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': join(__dirname, 'src/renderer'),
-      '@shared': join(__dirname, 'src/shared'),
-      '@main': join(__dirname, 'src/main'),
-      '@preload': join(__dirname, 'src/preload'),
+      '@': join(rootDir, 'src/renderer'),
+      '@shared': join(rootDir, 'src/shared'),
+      '@main': join(rootDir, 'src/main'),
+      '@preload': join(rootDir, 'src/preload'),
     },
   },
   base: './',
@@ -25,9 +28,9 @@ const rendererConfig = defineConfig({
 const mainConfig = defineConfig({
   resolve: {
     alias: {
-      '@shared': join(__dirname, 'src/shared'),
-      '@main': join(__dirname, 'src/main'),
-      '@preload': join(__dirname, 'src/preload'),
+      '@shared': join(rootDir, 'src/shared'),
+      '@main': join(rootDir, 'src/main'),
+      '@preload': join(rootDir, 'src/preload'),
     },
   },
   build: {
@@ -38,8 +41,8 @@ const mainConfig = defineConfig({
         ...builtinModules.map(m => `node:${m}`),
       ],
       input: {
-        main: join(__dirname, 'src/main/index.ts'),
-        preload: join(__dirname, 'src/preload/index.ts'),
+        main: join(rootDir, 'src/main/index.ts'),
+        preload: join(rootDir, 'src/preload/index.ts'),
       },
       output: {
         format: 'cjs',

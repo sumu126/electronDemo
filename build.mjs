@@ -11,7 +11,7 @@ const packageJson = JSON.parse(await readFile(new URL('./package.json', import.m
 async function buildMain() {
   console.log('Building main process...');
   await build({
-    configFile: './vite.config.ts',
+    configFile: './vite.config.mts',
     mode: 'electron',
   });
   console.log('Main process built successfully!');
@@ -20,7 +20,7 @@ async function buildMain() {
 async function buildRenderer() {
   console.log('Building renderer process...');
   await build({
-    configFile: './vite.config.ts',
+    configFile: './vite.config.mts',
     mode: 'web',
   });
   console.log('Renderer process built successfully!');

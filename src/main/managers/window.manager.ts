@@ -13,9 +13,14 @@ export class WindowManager {
   private windows: Map<string, BrowserWindow> = new Map();
   private tray: Tray | null = null;
   private configModule: ConfigModule | null = null;
+  private quitting = false;
 
   public setConfigModule(configModule: ConfigModule): void {
     this.configModule = configModule;
+  }
+
+  public markQuitting(): void {
+    this.quitting = true;
   }
 
   public createMainWindow(): BrowserWindow {
@@ -33,7 +38,7 @@ export class WindowManager {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false, // 在开发阶段暂时关闭sandbox以支持某些功能
+        sandbox: true,
       },
       icon: join(app.getAppPath(), 'assets/icon.ico'), // 使用ico图标
     });
@@ -42,7 +47,7 @@ export class WindowManager {
 
     // 窗口关闭事件 - 改为最小化到系统托盘
     this.mainWindow.on('close', (event) => {
-      if (!app.isQuitting) {
+      if (!this.quitting) {
         event.preventDefault();
         this.mainWindow?.hide();
         this.setupTray();
@@ -55,7 +60,22 @@ export class WindowManager {
       this.mainWindow = null;
     });
 
+    this.loadApp(this.mainWindow);
+
     return this.mainWindow;
+  }
+
+  // 统一入口：无论是首次启动、激活还是二次实例，创建窗口后都会被正确加载
+  private loadApp(window: BrowserWindow): void {
+    // 注意：Electron 45 下用 `electron .` 启动时 app.isPackaged 也会返回 true，
+    // 因此这里用 process.defaultApp 判断是否为开发模式。
+    if (process.defaultApp) {
+      window.loadURL('http://localhost:5173');
+      window.webContents.openDevTools();
+    } else {
+      // 在打包版本中，使用资源路径
+      window.loadFile(join(process.resourcesPath, 'dist/index.html'));
+    }
   }
 
   public createWindow(
@@ -79,7 +99,7 @@ export class WindowManager {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         ...(options.webPreferences || {}),
       },
     });
@@ -167,7 +187,7 @@ export class WindowManager {
       {
         label: '退出',
         click: () => {
-          app.isQuitting = true;
+          this.markQuitting();
           app.quit();
         }
       }

@@ -65,7 +65,7 @@ export class IpcManager {
 
   private initializeConfigHandler(): void {
     // 获取配置模块实例
-    const configModule = this.moduleManager.getModule('ConfigModule') as ConfigModule;
+    const configModule = this.moduleManager.getModule<ConfigModule>('ConfigModule');
     if (!configModule) {
       throw new Error('ConfigModule not found in module manager');
     }

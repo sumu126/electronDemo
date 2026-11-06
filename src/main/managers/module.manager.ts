@@ -52,8 +52,8 @@ export class ModuleManager {
     }
   }
 
-  public getModule(name: string): Module | undefined {
-    return this.modules.get(name);
+  public getModule<T extends Module = Module>(name: string): T | undefined {
+    return this.modules.get(name) as T | undefined;
   }
 
   public async destroy(): Promise<void> {

@@ -57,3 +57,29 @@ export interface ModuleInfo {
   description: string;
   enabled: boolean;
 }
+
+// 渲染进程允许调用的 IPC 通道及其返回类型
+export interface IpcInvokeMap {
+  ping: string;
+  'system:info': SystemInfo;
+  'config:get': AppConfig;
+  'config:update': void;
+  'file:read': string;
+  'file:write': void;
+  'window:minimize': void;
+  'window:maximize': void;
+  'window:close': void;
+}
+
+export type IpcChannel = keyof IpcInvokeMap;
+
+// preload 通过 contextBridge 暴露给渲染进程的 API
+export interface ElectronAPI {
+  invoke<K extends IpcChannel>(channel: K, ...args: unknown[]): Promise<IpcInvokeMap[K]>;
+  readFile(filePath: string): Promise<string>;
+  writeFile(filePath: string, data: string): Promise<void>;
+  getSystemInfo(): Promise<SystemInfo>;
+  minimizeWindow(): Promise<void>;
+  maximizeWindow(): Promise<void>;
+  closeWindow(): Promise<void>;
+}

@@ -34,6 +34,9 @@ export class ConfigService {
         analytics: true,
         autoUpdate: true,
       },
+      tray: {
+        hasShownFirstTimeNotice: false,
+      },
     };
   }
 

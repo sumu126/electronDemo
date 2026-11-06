@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
-      <div class="modal-container" :class="{ centered }" @click.stop>
+      <div class="modal-container" :class="{ centered }" :style="width ? { width } : undefined" @click.stop>
         <div class="modal-header">
           <slot name="header">
             <h3>{{ title }}</h3>
@@ -28,6 +28,7 @@ interface Props {
   centered?: boolean;
   closable?: boolean;
   maskClosable?: boolean;
+  width?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
   centered: true,
   closable: true,
   maskClosable: true,
+  width: '',
 });
 
 const emit = defineEmits<{
