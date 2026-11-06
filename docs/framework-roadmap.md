@@ -103,3 +103,16 @@ npm run build
 - 移除未使用依赖 `@vueuse/core`、`execa`
 
 Phase 2 已完成。Phase 3 待启动：安全收尾（CSP / 导航拦截 / 权限）、自动更新、打包发布与文档。
+
+## 8. Phase 3 实施记录（2026-11-06）
+
+已完成安全收尾：
+
+- `index.html` 增加 CSP（`script-src 'self'`、禁止 `unsafe-eval`，开发态放行 Vite WebSocket）
+- 窗口增加 `setWindowOpenHandler`（仅 https 外链交给系统浏览器）与 `will-navigate` 白名单
+- `session.setPermissionRequestHandler` 默认拒绝所有 Web 权限
+- IPC 增加 sender 来源校验（开发态只信任 `http://localhost:5173`，打包后只信任 `file://`）
+
+验证结果：34 个用例通过；Electron 冒烟无 CSP 拦截、无 IPC 拦截、无渲染错误，开发态原有的 Electron CSP 警告消失。
+
+Phase 3 剩余：自动更新（需要更新源与签名策略）、打包发布（多平台/签名/体积优化）、架构与发布文档。

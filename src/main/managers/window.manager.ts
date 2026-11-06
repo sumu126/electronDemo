@@ -1,9 +1,10 @@
-import { BrowserWindow, screen, Tray, Menu, nativeImage, app } from 'electron';
+import { BrowserWindow, screen, Tray, Menu, nativeImage, app, shell } from 'electron';
 import fs from 'fs';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
 
 import type { WindowConfig } from '@shared/types';
+import { isTrustedSenderUrl } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
 import {
   MIN_WINDOW_HEIGHT,
@@ -81,6 +82,7 @@ export class WindowManager {
     });
 
     this.loadApp(this.mainWindow);
+    this.registerNavigationGuards(this.mainWindow);
     this.registerWindowStateEvents(this.mainWindow);
 
     if (initialState.maximized) {
@@ -101,6 +103,25 @@ export class WindowManager {
       // 在打包版本中，使用资源路径
       window.loadFile(join(process.resourcesPath, 'dist/index.html'));
     }
+  }
+
+  private registerNavigationGuards(window: BrowserWindow): void {
+    const isDevelopment = Boolean(process.defaultApp);
+
+    // 新窗口一律拦截；仅 https 外链交给系统浏览器
+    window.webContents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('https://')) {
+        void shell.openExternal(url);
+      }
+      return { action: 'deny' };
+    });
+
+    // 页面内导航只允许应用自身地址
+    window.webContents.on('will-navigate', (event, url) => {
+      if (!isTrustedSenderUrl(url, isDevelopment)) {
+        event.preventDefault();
+      }
+    });
   }
 
   private registerWindowStateEvents(window: BrowserWindow): void {

@@ -4,6 +4,7 @@ import { ConfigHandler } from '../ipc/config.handler';
 import { FileHandler } from '../ipc/file.handler';
 import { WindowHandler } from '../ipc/window.handler';
 import { IPC_CHANNELS } from '@shared/constants';
+import { isTrustedSenderUrl } from '../ipc/sender';
 import { ModuleManager } from '../managers/module.manager';
 import { ConfigModule } from '../modules/config.module';
 
@@ -33,7 +34,13 @@ export class IpcManager {
 
   public registerHandler(handler: IpcHandler): void {
     this.handlers.set(handler.channel, handler);
-    this.ipcMain.handle(handler.channel, handler.handler);
+    this.ipcMain.handle(handler.channel, (event, ...args) => {
+      const senderUrl = event.senderFrame?.url ?? '';
+      if (!isTrustedSenderUrl(senderUrl, Boolean(process.defaultApp))) {
+        throw new Error(`Blocked IPC call from untrusted sender: ${senderUrl || 'unknown'}`);
+      }
+      return handler.handler(event, ...args);
+    });
   }
 
   public unregisterHandler(channel: string): void {

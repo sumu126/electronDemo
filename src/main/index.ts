@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, session } from 'electron';
 import { join } from 'path';
 import { WindowManager } from './managers/window.manager';
 import { IpcManager } from './ipc-manager/ipc.manager';
@@ -36,6 +36,11 @@ class App {
     
     // 设置IPC处理器（现在模块已经初始化）
     this.ipcManager.setupHandlers();
+
+    // 默认拒绝所有 Web 权限请求（摄像头、麦克风、通知等按需再开放）
+    session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+      callback(false);
+    });
     
     // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
     this.windowManager.createMainWindow();
