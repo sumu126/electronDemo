@@ -20,7 +20,7 @@ export class ConfigModule {
     await this.loadConfig();
   }
 
-  public async destroy?(): Promise<void> {
+  public async destroy(): Promise<void> {
     // 保存配置并在销毁前执行清理工作
     await this.saveConfig();
   }

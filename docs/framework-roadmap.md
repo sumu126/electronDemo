@@ -95,4 +95,11 @@ npm run build
 
 验证结果：32 个用例通过；Electron 隔离启动后自动生成 `userData/config.json` 与 `logs/main.log`；预置 1000×700 / (100,100) 的窗口状态可被正确恢复并在关闭时写回；路由正常挂载；`userData/modules` 下的 `hello.cjs` 可动态加载并初始化。
 
-Phase 2 剩余项：死代码清理。
+### 死代码清理
+
+- 删除未使用的 `Table.vue`、`Message.vue`、`renderer/utils/message.ts`、`renderer/utils/index.ts`
+- 移除未接线的 `useAppConfig`、`useWindowControl` 与 app store 中的冗余字段
+- 删除未实现、无消费方的 IPC 通道常量
+- 移除未使用依赖 `@vueuse/core`、`execa`
+
+Phase 2 已完成。Phase 3 待启动：安全收尾（CSP / 导航拦截 / 权限）、自动更新、打包发布与文档。
