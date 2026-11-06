@@ -52,21 +52,21 @@ npm run build
 
 **验收**：配置文件只有一处写入路径；新增页面/模块只需按约定放文件，不改内核。
 
-### Phase 3 — 交付能力
+### Phase 3 — 开发者体验与交付基线
 
-1. 安全收尾：生产 CSP、`setWindowOpenHandler`、`will-navigate`、权限请求处理、IPC sender 校验
-2. 自动更新：接入 `electron-updater`，与 `features.autoUpdate` 联动
-3. 打包发布：移除 `node_modules/**/*` 全量打包、`.env` 出包、asar 优化、Windows 签名、mac/linux target
-4. 文档与发布：架构说明、ADR、CHANGELOG、CONTRIBUTING、示例模板
+1. 安全收尾：生产 CSP、`setWindowOpenHandler`、`will-navigate`、权限请求处理、IPC sender 校验（已完成）
+2. 开发体验：修复启动竞态、精简脚本、明确主进程调试方式、补充目录约定
+3. 打包洁净度：移除 `node_modules/**/*` 全量打包、`.env` 出包、精简冗余打包脚本
+4. 文档：README 快速开始、页面/IPC/模块 recipes、架构说明
 
-**验收**：能产出一个可安装、可升级、可追踪日志的 Windows 安装包。
+**验收**：按 README 能独立完成开发、测试与打包，新增页面/IPC/模块不需要改框架内核。
+
+> 明确不做：自动更新。本项目的定位是快速开发框架，不绑定具体的发布渠道与更新源。
 
 ## 4. 本次明确不做
 
 - 不引入 UI 组件库，不重做界面
-- 不做自动更新与签名（依赖发布链路，放在 Phase 3）
-- 不做多平台打包
-- 不一次性重构配置双源（放在 Phase 2，避免与门禁建设混在一起）
+- 不做自动更新、代码签名与多平台发布（框架不绑定具体发布渠道）
 
 ## 5. 风险与约束
 
