@@ -46,6 +46,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { useSystemInfo } from './composables';
 import { useAppStore } from './stores/app.store';
+import { useConfigStore } from './stores/config.store';
 import FrameworkInfo from './components/FrameworkInfo.vue';
 import Modal from './components/Modal.vue';
 import ConfigPanel from './components/ConfigPanel.vue';
@@ -61,6 +62,7 @@ const {
 
 // 使用store
 const appStore = useAppStore();
+const configStore = useConfigStore();
 const isDeveloperMode = computed(() => appStore.isDeveloperMode);
 
 const toggleDevMode = () => {
@@ -84,13 +86,9 @@ const pingResult = ref<string | null>(null);
 
 // 在组件挂载时获取应用配置
 onMounted(async () => {
-  try {
-    const config = await window.electronAPI.invoke('config:get');
-    if (config && config.appName) {
-      title.value = config.appName;
-    }
-  } catch (error) {
-    console.error('Failed to get app config:', error);
+  await configStore.ensureLoaded();
+  if (configStore.config.appName) {
+    title.value = configStore.config.appName;
   }
 });
 </script>

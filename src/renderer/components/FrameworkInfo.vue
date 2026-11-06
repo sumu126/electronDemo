@@ -13,6 +13,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useConfigStore } from '../stores/config.store';
 
 interface Feature {
   title: string;
@@ -38,20 +39,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 // 如果没有传入标题，则从配置中获取
 const componentTitle = ref(props.title || '');
+const configStore = useConfigStore();
 
 onMounted(async () => {
   if (!props.title) {
-    try {
-      const config = await window.electronAPI.invoke('config:get');
-      if (config && config.appName) {
-        componentTitle.value = `${config.appName} 框架`;
-      } else {
-        componentTitle.value = 'Electron + Vue3 框架';
-      }
-    } catch (error) {
-      console.error('Failed to get app config for title:', error);
-      componentTitle.value = 'Electron + Vue3 框架';
-    }
+    await configStore.ensureLoaded();
+    componentTitle.value = configStore.config.appName
+      ? `${configStore.config.appName} 框架`
+      : 'Electron + Vue3 框架';
   }
 });
 </script>

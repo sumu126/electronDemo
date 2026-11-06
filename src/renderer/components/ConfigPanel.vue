@@ -80,12 +80,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, watch } from 'vue';
 import { useConfig } from '../composables/useConfig';
 import { AppConfig } from '@shared/types';
 
 // 使用配置composable
-const { config, loading, error, updateConfig, cleanup } = useConfig();
+const { config, loading, error, updateConfig } = useConfig();
 
 // 本地配置副本，用于编辑
 const localConfig = ref<AppConfig>({ ...config.value });
@@ -137,11 +137,6 @@ const saveConfig = async () => {
 const resetConfig = () => {
   localConfig.value = { ...config.value };
 };
-
-// 组件卸载时清理
-onUnmounted(() => {
-  cleanup();
-});
 </script>
 
 <style scoped>

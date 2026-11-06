@@ -79,3 +79,16 @@ npm run build
 已完成：质量脚本、ESLint 10（flat config）、Prettier、Vitest 5（9 个用例）、GitHub Actions CI，以及路径守卫 `..foo` 误判、未使用导入/方法等 P2 清理。
 
 验证结果：`typecheck`、`lint`、`test`（2 文件 / 9 用例）、`build`、Electron 隔离冒烟全部通过。
+
+## 7. Phase 2 实施记录（2026-11-06）
+
+已完成第一项：**配置单一数据源**。
+
+- 新增 `src/shared/config/defaults.ts`，主进程与渲染进程共用同一份默认配置
+- 新增 `src/renderer/stores/config.store.ts`，渲染进程所有配置读写统一走 `config:get/update`
+- 删除 localStorage 版 `src/renderer/services/config.service.ts`
+- `ConfigModule.updateConfig` 改为深合并，修复局部更新覆盖同级字段的问题
+
+验证结果：13 个用例通过；Electron 隔离启动后自动生成 `userData/config.json`，渲染进程无报错。
+
+Phase 2 剩余项：路由骨架、窗口状态持久化、模块系统契约化、日志与全局异常、死代码清理。

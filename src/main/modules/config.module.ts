@@ -2,6 +2,7 @@ import { app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 import { ensureDir, deepMerge } from '@shared/utils';
+import { createDefaultConfig } from '@shared/config/defaults';
 import { AppConfig } from '@shared/types';
 import { APP_CONSTANTS } from '@shared/constants';
 
@@ -25,24 +26,10 @@ export class ConfigModule {
   }
 
   private getDefaultConfig(): AppConfig {
-    return {
+    return createDefaultConfig({
       appName: app.getName() || APP_CONSTANTS.NAME,
       version: app.getVersion() || APP_CONSTANTS.VERSION,
-      theme: 'auto',
-      language: 'zh-CN',
-      window: {
-        width: 1200,
-        height: 800,
-      },
-      features: {
-        developerTools: false,
-        analytics: true,
-        autoUpdate: true,
-      },
-      tray: {
-        hasShownFirstTimeNotice: false,
-      },
-    };
+    });
   }
 
   private async loadConfig(): Promise<void> {
@@ -84,7 +71,8 @@ export class ConfigModule {
   }
 
   public async updateConfig(updates: Partial<AppConfig>): Promise<void> {
-    this.config = { ...this.config, ...updates };
+    // 深合并，避免局部更新（如只改一个 feature 开关）覆盖整个对象
+    this.config = deepMerge(this.config, updates);
     await this.saveConfig();
   }
 
