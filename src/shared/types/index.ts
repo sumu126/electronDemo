@@ -25,6 +25,7 @@ export interface FeatureFlags {
 
 export interface TrayConfig {
   hasShownFirstTimeNotice: boolean;
+  balloonNotificationEnabled: boolean;
 }
 
 // IPC通信相关类型

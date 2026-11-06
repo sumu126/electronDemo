@@ -23,6 +23,7 @@ export function createDefaultConfig(overrides: Partial<AppConfig> = {}): AppConf
     },
     tray: {
       hasShownFirstTimeNotice: false,
+      balloonNotificationEnabled: false,
     },
   };
 

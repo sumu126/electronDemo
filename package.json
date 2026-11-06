@@ -15,8 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron:dev": "npm run build && concurrently -k -n \"VITE,ELECTRON\" \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "npm run build && electron-builder --dir",
-    "electron:build-win": "npm run build && electron-builder --win --config",
+    "electron:build": "npm run build && electron-builder --dir --publish never",
+    "electron:build-win": "npm run build && electron-builder --win --config --publish never",
     "electron:start": "electron ."
   },
   "keywords": [
@@ -32,10 +32,9 @@
     },
     "files": [
       "dist-electron/**/*",
-      "node_modules/**/*",
       "package.json",
       "assets/**/*",
-      ".env"
+      "!node_modules/**/*"
     ],
     "extraResources": [
       {
@@ -47,8 +46,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.ico",
-      "publisherName": "Electron-Vue3 Team"
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -77,7 +75,6 @@
     "wait-on": "^9.5.1"
   },
   "dependencies": {
-    "dotenv": "^18.0.9",
     "pinia": "^4.1.0",
     "vue": "^3.5.45",
     "vue-router": "^4.6.4"

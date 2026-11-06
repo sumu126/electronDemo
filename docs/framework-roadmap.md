@@ -115,4 +115,13 @@ Phase 2 已完成。Phase 3 待启动：安全收尾（CSP / 导航拦截 / 权�
 
 验证结果：34 个用例通过；Electron 冒烟无 CSP 拦截、无 IPC 拦截、无渲染错误，开发态原有的 Electron CSP 警告消失。
 
-Phase 3 剩余：自动更新（需要更新源与签名策略）、打包发布（多平台/签名/体积优化）、架构与发布文档。
+### 开发者体验与交付基线
+
+- `electron:dev` 改用 `wait-on` 探测端口，移除固定 3 秒延时与 `delay-electron.js`
+- 托盘通知开关从 `.env` 收敛到 `config.json` 的 `tray.balloonNotificationEnabled`，删除 `.env` 与 dotenv 依赖
+- 打包 `files` 移除全量 `node_modules` 与 `.env`；修正 electron-builder 26 不接受的 `win.publisherName`；构建脚本加 `--publish never`
+- README 重写为框架使用指南，补充页面 / IPC / 模块 / 配置 recipes
+
+验证结果：34 个用例通过；`npm run build` 与 Electron 冒烟通过；electron-builder 配置 schema 校验通过。本机 `dist-app` 目录被外部进程占用，解包产物验证未完成（环境问题，与配置无关）。
+
+Phase 3 剩余：清理占用后复跑打包产物验证；可选实现主进程热重启。

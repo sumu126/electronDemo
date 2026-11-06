@@ -1,20 +1,11 @@
 import { BrowserWindow, screen, Tray, Menu, nativeImage, app, shell } from 'electron';
 import fs from 'fs';
 import { join } from 'path';
-import * as dotenv from 'dotenv';
 
 import type { WindowConfig } from '@shared/types';
 import { isTrustedSenderUrl } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
-import {
-  MIN_WINDOW_HEIGHT,
-  MIN_WINDOW_WIDTH,
-  resolveInitialWindowState,
-} from './window-state';
-
-// 加载环境变量 - 使用绝对路径确保正确找到文件
-const envPath = join(app.getAppPath(), '.env');
-dotenv.config({ path: envPath });
+import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
@@ -38,7 +29,7 @@ export class WindowManager {
     const initialState = resolveInitialWindowState(
       savedWindow,
       primaryDisplay.workArea,
-      screen.getAllDisplays().map(display => display.workArea),
+      screen.getAllDisplays().map((display) => display.workArea),
     );
 
     this.mainWindow = new BrowserWindow({
@@ -165,12 +156,12 @@ export class WindowManager {
           maximized: window.isMaximized(),
         },
       })
-      .catch(error => console.error('Failed to save window state:', error));
+      .catch((error) => console.error('Failed to save window state:', error));
   }
 
   public createWindow(
     id: string,
-    options: Electron.BrowserWindowConstructorOptions
+    options: Electron.BrowserWindowConstructorOptions,
   ): BrowserWindow {
     // 检查窗口是否已存在
     if (this.windows.has(id)) {
@@ -219,7 +210,7 @@ export class WindowManager {
   }
 
   public getAllWindows(): BrowserWindow[] {
-    return Array.from(this.windows.values()).filter(window => !window.isDestroyed());
+    return Array.from(this.windows.values()).filter((window) => !window.isDestroyed());
   }
 
   public getMainWindow(): BrowserWindow | null {
@@ -235,7 +226,7 @@ export class WindowManager {
 
     // 创建托盘图标
     let iconPath = join(app.getAppPath(), 'assets/icon.ico');
-    
+
     // 检查图标文件是否存在
     if (!fs.existsSync(iconPath)) {
       // 尝试使用PNG图标
@@ -244,7 +235,7 @@ export class WindowManager {
         iconPath = pngIconPath;
       }
     }
-    
+
     try {
       const trayIcon = nativeImage.createFromPath(iconPath);
       if (trayIcon.isEmpty()) {
@@ -257,11 +248,11 @@ export class WindowManager {
       // 使用默认图标
       this.tray = new Tray(nativeImage.createEmpty());
     }
-    
+
     // 设置托盘提示，使用配置中的应用名称
     const appName = this.configModule?.getValue<string>('appName') || 'Electron Vue3 Framework';
     this.tray.setToolTip(appName);
-    
+
     // 创建托盘菜单
     const contextMenu = Menu.buildFromTemplate([
       {
@@ -271,19 +262,19 @@ export class WindowManager {
             this.mainWindow.show();
             this.mainWindow.focus();
           }
-        }
+        },
       },
       {
         label: '退出',
         click: () => {
           this.markQuitting();
           app.quit();
-        }
-      }
+        },
+      },
     ]);
-    
+
     this.tray.setContextMenu(contextMenu);
-    
+
     // 托盘图标点击事件
     this.tray.on('click', () => {
       if (this.mainWindow) {
@@ -301,53 +292,29 @@ export class WindowManager {
   }
 
   private async checkAndShowTrayNotification(): Promise<void> {
-    // 直接读取.env文件内容，避免dotenv问题
-    const envPath = join(app.getAppPath(), '.env');
-    
-    let enableBalloonNotification = true; // 默认启用
-    
+    const balloonEnabled =
+      this.configModule?.getValue<boolean>('tray.balloonNotificationEnabled') ?? false;
+
+    if (balloonEnabled) {
+      // 每次关闭都显示通知
+      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      return;
+    }
+
+    if (!this.configModule) {
+      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      return;
+    }
+
+    // 默认只在第一次关闭时显示通知
     try {
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        
-        // 解析环境变量
-        const lines = envContent.split('\n');
-        for (const line of lines) {
-          if (line.trim() && !line.startsWith('#')) {
-            const [key, value] = line.split('=');
-            if (key && value) {
-              if (key.trim() === 'BALLOON_NOTIFICATION_ENABLED') {
-                enableBalloonNotification = value.trim() === 'true';
-                break;
-              }
-            }
-          }
-        }
+      const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
+      if (!hasShown) {
+        this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+        await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
       }
     } catch (error) {
-      console.error('Error reading .env file:', error);
-    }
-    
-    if (!enableBalloonNotification) {
-      // 如果配置为false，只在第一次显示通知
-      if (this.configModule) {
-        try {
-          const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
-          if (!hasShown) {
-            this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
-            await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
-          }
-        } catch (error) {
-          console.error('Error checking tray notification status:', error);
-          // 出错时显示通知
-          this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
-        }
-      } else {
-        // 配置模块未设置时显示通知
-        this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
-      }
-    } else {
-      // 如果配置为true，每次关闭都显示通知
+      console.error('Error checking tray notification status:', error);
       this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
     }
   }
@@ -362,9 +329,8 @@ export class WindowManager {
       this.tray.displayBalloon({
         title: title,
         content: content,
-        icon: nativeImage.createFromPath(join(app.getAppPath(), 'assets/icon.ico'))
+        icon: nativeImage.createFromPath(join(app.getAppPath(), 'assets/icon.ico')),
       });
-      
     } catch {
       // 忽略通知错误
     }

@@ -8,6 +8,7 @@ describe('createDefaultConfig', () => {
     expect(config.window.width).toBe(1200);
     expect(config.features.developerTools).toBe(false);
     expect(config.tray.hasShownFirstTimeNotice).toBe(false);
+    expect(config.tray.balloonNotificationEnabled).toBe(false);
   });
 
   it('深合并覆盖项且不丢失同级字段', () => {
