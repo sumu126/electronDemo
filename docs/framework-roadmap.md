@@ -216,3 +216,45 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 - `theme` / `language` / `analytics` / `autoUpdate` 仍无消费方
 - 组件层无测试（无 jsdom），覆盖率 30% 主要来自纯函数与主进程逻辑
 - 主进程热重启未接入；CI 仍是单平台、不启动真实 Electron
+
+## 11. 第三轮：补齐「合格快速开发框架」的短板（2026-11-07）
+
+上一轮遗留的候选逐项处理，并补上框架该有但一直缺的东西。
+
+### 配置不再空转
+
+1. **主题接线**：新增 `styles/theme.css`（CSS 变量）与 `renderer/theme`；`light / dark / auto` 真正生效，`auto` 跟随系统配色；组件里的硬编码色值全部换成变量
+2. **多语言接线**：新增 `shared/i18n`（zh-CN / en-US），渲染端 `useI18n()`、主进程 `getMessages()` 共用同一份文案，托盘菜单与通知也随配置切换；schema 把 `language` 收紧为枚举
+
+### 稳定性与骨架
+
+3. **错误边界**：`AppErrorBoundary` 用 `onErrorCaptured` 兜住页面异常，提供重新加载入口
+4. **404 兜底**：`NotFoundView` + catch-all 路由，兜底路由固定注册在最后（用例守护顺序）
+
+### 开发体验与交付
+
+5. **主进程热重启**：`scripts/dev.mjs` 监听 `src/main`、`src/preload`、`src/shared`，改动后防抖重建并重启 Electron；构建失败保留旧进程；Windows 用 `taskkill` 收整棵进程树；移除不再需要的 `concurrently` / `wait-on`
+6. **真机冒烟**：`scripts/smoke.mjs` 用临时 userData 启动真实 Electron，校验 `config.json` 落盘、`main.log` 出现 `Main window created`、无 uncaught / 被拦截的 IPC
+7. **CI 双平台**：ubuntu（xvfb）+ windows 矩阵，两个平台都跑冒烟；移除 `ELECTRON_SKIP_BINARY_DOWNLOAD`
+8. **组件测试**：vitest 接入 `@vitejs/plugin-vue` + jsdom + `@vue/test-utils`，覆盖 Modal、ConfigPanel、AppErrorBoundary、theme、i18n；覆盖率 29.77% → 35.63%，阈值上调到 33/40/26/33
+9. **换行统一**：新增 `.gitattributes`（`* text=auto eol=lf`）。Windows 上 `git checkout` 会把工作区写成 CRLF，此前会让 `format:check` 无故失败
+10. **插件文档**：新增 `docs/插件开发.md` 与 `docs/examples/hello-module.cjs`，写清能力边界（只能 require electron 与 Node 内置）、日志入口、IPC 自查与安全清单；`globalThis.__frameworkLogger` 供插件写入 `main.log`
+
+### 顺带修掉的坑
+
+11. **`process.env` 在打包后失效**：Vite 的非 SSR 构建会把 `process.env` 替换成 `{}`，主进程里任何环境变量都是 `undefined` 且不报错。主进程改用 `build.ssr: true` 后恢复
+12. **`ELECTRON_USER_DATA_DIR` 支持**：用于 CI 冒烟与便携模式隔离真实用户数据
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test`（74 个用例，较上轮 +24）/ `test:coverage` / `build` 全绿
+- 主进程热重启实测：改动 `src/shared` 下文件后 8 秒内完成重建（约 30ms）与 Electron 重启，日志连续
+- `npm run smoke` 本地通过（exit 0），临时目录正确回收
+- 组件测试 24 条；覆盖率达 35.63% / 43.03% / 28.63% / 36.02%
+
+### 尚未处理（下一轮候选）
+
+- `features.analytics` / `features.autoUpdate` 仍无消费方（前者缺埋点方案，后者明确不做）
+- 渲染端异常仍未上报主进程日志
+- 主进程热重启只重建不保留窗口状态（重启即重新建窗，属预期）
+- 打包产物尚未接代码签名与多平台发布

@@ -22,6 +22,8 @@ npm run build
 
 `prepare` 脚本会自动安装 pre-commit 钩子，提交时跑同一套门禁；确实需要跳过时用 `SKIP_GATES=1 git commit ...`。
 
+CI 额外在 ubuntu（xvfb）与 windows 上各跑一次 `npm run smoke`（启动真实 Electron 校验配置与日志）；改到主进程启动链路时，本地也建议跑一遍 `npm run smoke`。
+
 ## 其他约定
 
 - `dist/`、`dist-electron/`、`dist-app*/` 是构建产物，已在 `.gitignore` 中，不要提交。

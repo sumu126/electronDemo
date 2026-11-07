@@ -9,11 +9,14 @@
 - **三进程分层**：`main` / `preload` / `renderer` / `shared`，职责清晰
 - **类型安全 IPC**：通道白名单 + `IpcInvokeMap` 参数/返回类型 + 编译期白名单完整性断言 + sender 来源校验
 - **单一配置源**：主进程落盘 `userData/config.json`（schema 校验 + 原子写），渲染端通过 Pinia store 读写
+- **主题与语言**：`theme`（light/dark/auto，跟随系统）与 `language`（zh-CN/en-US）由配置驱动，颜色走 CSS 变量
 - **窗口状态持久化**：位置、尺寸、最大化状态自动保存与恢复，离屏坐标自动丢弃
-- **路由骨架**：`vue-router` 4 + hash 模式，打包后 `file://` 可直接工作
+- **路由骨架**：`vue-router` 4 + hash 模式 + 404 兜底，打包后 `file://` 可直接工作
+- **错误边界**：页面级异常被 `AppErrorBoundary` 兜住，不整页白屏
 - **模块系统**：`userData/modules` 下的 CommonJS 模块可动态加载，单个模块失败不影响启动
 - **日志与异常**：主进程异步文件日志（退出前刷盘）+ 全局异常兜底
-- **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套
+- **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
+- **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
 - **安全默认**：`sandbox: true`、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道
 
 ## 技术栈
@@ -39,17 +42,15 @@ npm install
 npm run electron:dev
 ```
 
-`electron:dev` 会先构建主进程，再并行启动 Vite 与 Electron，并用 `wait-on` 等待 `5173` 就绪，避免固定延时导致的启动竞态。
+`electron:dev` 会构建主进程、启动 Vite、等 `5173` 就绪后再拉起 Electron；之后 `src/main`、`src/preload`、`src/shared` 的改动会**自动重建主进程并重启 Electron**，渲染进程仍然走 Vite 热更新。
 
-> 渲染进程由 Vite 热更新；修改主进程或 preload 后需要重新执行 `electron:dev`（当前未接主进程热重启）。
-
-> **启动报 `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`**：当前终端把 `ELECTRON_RUN_AS_NODE=1` 传给了子进程（VS Code 等 Electron 系终端常见），Electron 会被当成普通 Node 执行。启动前清掉该变量即可：PowerShell `$env:ELECTRON_RUN_AS_NODE=''`，cmd `set ELECTRON_RUN_AS_NODE=`。
+> **启动报 `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`**：当前终端把 `ELECTRON_RUN_AS_NODE=1` 传给了子进程（VS Code 等 Electron 系终端常见），Electron 会被当成普通 Node 执行。`electron:dev` 已主动清除该变量；直接 `npm run electron:start` 时如遇到，PowerShell `$env:ELECTRON_RUN_AS_NODE=''`，cmd `set ELECTRON_RUN_AS_NODE=`。
 
 ### 常用命令
 
 ```bash
 npm run dev              # 仅启动 Vite
-npm run electron:dev     # 构建主进程 + 启动 Electron 开发环境
+npm run electron:dev     # 构建主进程 + 启动开发环境（主进程热重启）
 npm run build            # 构建主进程与渲染进程
 npm run electron:build   # 构建并生成解包应用（dist-app）
 npm run electron:build-win  # 构建 Windows 安装包
@@ -60,6 +61,7 @@ npm run format           # Prettier 格式化
 npm run format:check     # Prettier 校验（不写文件）
 npm test                 # Vitest
 npm run test:coverage    # Vitest + 覆盖率阈值
+npm run smoke            # 真机冒烟：启动 Electron 校验配置与日志落盘
 ```
 
 `npm install` 会通过 `prepare` 自动安装 pre-commit 钩子，提交时依次跑 typecheck / lint / format:check / test / build；确实要跳过时用 `SKIP_GATES=1 git commit ...`。
@@ -77,18 +79,21 @@ src/
 │   └── utils/                # 主进程工具（Logger）
 ├── preload/                  # contextBridge 暴露的安全 API（通道白名单）
 ├── renderer/                 # 渲染进程
-│   ├── router/               # 路由表（hash 模式）
+│   ├── router/               # 路由表（hash 模式 + 404 兜底）
 │   ├── views/                # 页面
-│   ├── components/           # 组件
-│   ├── composables/          # 组合式函数
+│   ├── components/           # 组件（含 Modal、AppErrorBoundary）
+│   ├── composables/          # 组合式函数（配置、系统信息、i18n）
 │   ├── stores/               # Pinia（配置、应用状态）
+│   ├── theme/                # 主题解析与应用
+│   ├── styles/               # 全局样式与主题变量
 │   └── env.d.ts              # window.electronAPI 类型声明
 └── shared/                   # 跨进程共享
     ├── config/               # 默认值与配置 schema（唯一来源）
     ├── constants/            # IPC 通道常量
+    ├── i18n/                 # 中英文案（主进程与渲染进程共用）
     ├── types/                # IPC/配置类型契约
     └── utils/                # 纯函数工具与路径守卫
-scripts/                      # 仓库脚本（钩子安装）
+scripts/                      # 仓库脚本（钩子安装、开发启动器、冒烟）
 docs/                         # 文档与实施记录
 ```
 
@@ -123,7 +128,7 @@ docs/                         # 文档与实施记录
 
 ### 新增用户模块
 
-在用户数据目录的 `modules/` 下放置 CommonJS 模块即可被动态加载：
+在用户数据目录的 `modules/` 下放置 CommonJS 模块即可被动态加载，完整约定见[插件开发](docs/插件开发.md)：
 
 ```js
 // userData/modules/hello.cjs
@@ -141,7 +146,20 @@ module.exports = {
 ```
 
 - 核心模块初始化失败会中断启动；用户模块失败只隔离自身
+- 模块运行在主进程，拥有主进程权限；只保证 `electron` 与 Node 内置模块可用，**不能 require 第三方依赖**（打包时排除了 `node_modules`）
 - 默认可执行外部代码属于插件的固有风险，生产环境请自行校验模块来源
+
+### 主题与语言
+
+```ts
+await configStore.updateConfig({ theme: 'dark' }); // light / dark / auto
+await configStore.updateConfig({ language: 'en-US' }); // zh-CN / en-US
+```
+
+- `theme`：`applyTheme` 只切换 `<html data-theme>`，颜色全部来自 `src/renderer/styles/theme.css` 的 CSS 变量；`auto` 会跟随系统配色变化
+- `language`：渲染端用 `useI18n()`，主进程用 `getMessages(locale)`，两边共用 `src/shared/i18n` 的同一份文案
+- 新增语言：在 `src/shared/i18n` 加一份 `AppMessages`，再补进 `SUPPORTED_LOCALES`；`schema` 会自动放行
+- 新增主题色：只改 `theme.css` 里的变量，不要在组件里写死颜色
 
 ### 配置
 
@@ -159,6 +177,7 @@ await configStore.updateConfig({ theme: 'dark' });
 - 旧版本残留的未知键会在加载时裁剪，首次裁剪前备份到 `config.json.bak`
 - 窗口标题取自配置的 `appName`，构建脚本不再改写 `index.html`
 - `features.developerTools` 控制开发态启动时是否自动打开 DevTools
+- 主进程支持 `ELECTRON_USER_DATA_DIR` 覆盖 userData 目录（便携模式与 CI 冒烟用）
 
 ### 窗口状态
 
@@ -183,7 +202,10 @@ npm test
 npm run build
 ```
 
-CI 用 `npm run test:coverage`，覆盖率阈值在当前基线（statements 27% / branches 34% / functions 18% / lines 27%）之上，防止倒退。
+CI 额外做两件事：
+
+- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 33% / branches 40% / functions 26% / lines 33%）
+- 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
 
 ## 打包
 
@@ -211,9 +233,11 @@ npm run electron:build-win   # Windows 安装包：dist-app
 ## 文档
 
 - [补齐路线与实施记录](docs/framework-roadmap.md)
+- [插件开发约定](docs/插件开发.md)
 - [框架功能详解](docs/框架功能详解.md)
 - [使用指南](docs/框架使用指南.md)
 - [从页面到后端功能 API 实现示例](docs/API实现示例.md)
+- [变更记录](CHANGELOG.md)
 
 ## License
 
