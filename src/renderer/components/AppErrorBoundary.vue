@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref } from 'vue';
 import { useI18n } from '../composables/useI18n';
+import { reportError } from '../utils/report';
 
 const { t } = useI18n();
 
@@ -21,6 +22,7 @@ onErrorCaptured((error) => {
   hasError.value = true;
   message.value = error instanceof Error ? error.message : String(error);
   console.error('[renderer] Captured by AppErrorBoundary:', error);
+  reportError('Captured by AppErrorBoundary', error);
   return false;
 });
 

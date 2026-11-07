@@ -2,6 +2,7 @@ import { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { SystemInfoHandler } from '../ipc/system.handler';
 import { ConfigHandler } from '../ipc/config.handler';
 import { WindowHandler } from '../ipc/window.handler';
+import { LogReportHandler } from '../ipc/log.handler';
 import { IPC_CHANNELS } from '@shared/constants';
 import { isTrustedSenderUrl } from '../ipc/sender';
 import { ModuleManager } from '../managers/module.manager';
@@ -21,6 +22,7 @@ export class IpcManager {
   private systemInfoHandler: SystemInfoHandler;
   private configHandler: ConfigHandler | null = null;
   private windowHandler: WindowHandler;
+  private logReportHandler: LogReportHandler;
   private moduleManager: ModuleManager;
 
   constructor(ipcMain: IpcMain, moduleManager: ModuleManager) {
@@ -30,6 +32,7 @@ export class IpcManager {
     // 初始化处理器
     this.systemInfoHandler = new SystemInfoHandler();
     this.windowHandler = new WindowHandler();
+    this.logReportHandler = new LogReportHandler();
   }
 
   public registerHandler(handler: IpcHandler): void {
@@ -65,6 +68,9 @@ export class IpcManager {
 
     // 注册窗口操作处理器
     this.registerWindowHandlers();
+
+    // 注册渲染进程日志上报处理器
+    this.registerLogReportHandler();
   }
 
   private initializeConfigHandler(): void {
@@ -111,6 +117,20 @@ export class IpcManager {
       channel: IPC_CHANNELS.CONFIG_UPDATE,
       handler: (event: IpcMainInvokeEvent, updates: unknown): Promise<any> => {
         return this.configHandler!.updateConfig(event, updates);
+      },
+    });
+  }
+
+  private registerLogReportHandler(): void {
+    this.registerHandler({
+      channel: IPC_CHANNELS.LOG_REPORT,
+      handler: (
+        event: IpcMainInvokeEvent,
+        level: 'info' | 'warn' | 'error',
+        message: string,
+        meta?: string | Record<string, unknown>,
+      ): Promise<void> => {
+        return this.logReportHandler.report(event, level, message, meta);
       },
     });
   }

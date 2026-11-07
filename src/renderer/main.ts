@@ -4,6 +4,7 @@ import App from './App.vue';
 import { router } from './router';
 import { useConfigStore } from './stores/config.store';
 import { applyTheme, watchSystemTheme } from './theme';
+import { reportError } from './utils/report';
 import './styles/theme.css';
 
 // 创建应用实例
@@ -15,13 +16,15 @@ app.use(createPinia());
 // 使用路由
 app.use(router);
 
-// 全局异常兜底：先记录，后续可通过 IPC 上报到主进程日志
+// 全局异常兜底：控制台留一份，同时上报到主进程日志（限流由主进程负责）
 app.config.errorHandler = (error, _instance, info) => {
   console.error('[renderer] Unhandled component error:', info, error);
+  reportError('Unhandled component error', error, { info });
 };
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[renderer] Unhandled promise rejection:', event.reason);
+  reportError('Unhandled promise rejection', event.reason);
 });
 
 // 配置驱动的外观与标题：theme 决定 <html data-theme>，appName 决定窗口标题

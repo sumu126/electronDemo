@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { reportError } from '../utils/report';
 
 /**
  * 使用系统信息
@@ -16,6 +17,7 @@ export const useSystemInfo = () => {
     } catch (err: any) {
       error.value = err.message || '获取系统信息失败';
       console.error('获取系统信息失败:', err);
+      reportError('Failed to fetch system info', err);
     } finally {
       loading.value = false;
     }

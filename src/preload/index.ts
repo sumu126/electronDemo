@@ -8,6 +8,7 @@ const ALLOWED_CHANNELS = [
   'system:info',
   'config:get',
   'config:update',
+  'log:report',
   'window:minimize',
   'window:maximize',
   'window:close',

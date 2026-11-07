@@ -24,6 +24,9 @@ export const IPC_CHANNELS = {
   // 配置管理通道
   CONFIG_GET: 'config:get',
   CONFIG_UPDATE: 'config:update',
+
+  // 渲染进程日志上报（限流）
+  LOG_REPORT: 'log:report',
 } as const;
 
 // 系统常量

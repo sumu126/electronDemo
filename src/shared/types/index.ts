@@ -63,6 +63,14 @@ export interface IpcInvokeMap {
   'system:info': { args: []; returns: SystemInfo };
   'config:get': { args: []; returns: AppConfig };
   'config:update': { args: [updates: Partial<AppConfig>]; returns: void };
+  'log:report': {
+    args: [
+      level: 'info' | 'warn' | 'error',
+      message: string,
+      meta?: string | Record<string, unknown>,
+    ];
+    returns: void;
+  };
   'window:minimize': { args: []; returns: void };
   'window:maximize': { args: []; returns: void };
   'window:close': { args: []; returns: void };
