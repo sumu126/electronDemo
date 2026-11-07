@@ -132,6 +132,11 @@ const main = async () => {
       fail('main.log does not contain "Main window created"');
     }
 
+    // 启动打点必须真的落盘，否则性能观测形同虚设
+    if (!log.includes('Startup completed')) {
+      fail('main.log does not contain "Startup completed"');
+    }
+
     if (/uncaught|Blocked IPC/i.test(log)) {
       fail('main.log contains uncaught errors or blocked IPC calls');
     }
