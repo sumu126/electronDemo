@@ -5,6 +5,7 @@ import { ConfigModule } from '../modules/config.module';
 import { loadModulesFromDirectory } from './module-loader';
 import { ModuleRegistry } from './module-registry';
 import { getLogger } from '../utils/app-logger';
+import type { LogSink } from '../utils/app-logger';
 import type { Module } from './module.types';
 import type { ModuleInfo } from '@shared/types';
 
@@ -28,6 +29,10 @@ export class ModuleManager {
   private async loadUserModules(): Promise<void> {
     const modulesDir = join(app.getPath('userData'), 'modules');
     const requireModule = createRequire(__filename);
+
+    // 插件不能 import 框架代码，用一个全局入口把日志通道交出去
+    (globalThis as { __frameworkLogger?: LogSink }).__frameworkLogger = getLogger();
+
     const loaded = await loadModulesFromDirectory(modulesDir, this.registry, requireModule);
 
     getLogger().info(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
