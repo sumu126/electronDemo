@@ -323,3 +323,20 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 
 - 构建配置无签名相关字段（`grep` 确认 `package.json` 只有 `appId` / `icon` / `nsis` 等基础项）
 - `typecheck` / `lint` / `format:check` / `test`（104 个用例）/ `build` / `smoke` 全绿
+
+## 15. 决策记录：移除 `features.analytics`（2026-11-07）
+
+`features.analytics` 是初版脚手架留下的三个占位开关之一（另两个是 `developerTools` 与已移除的 `autoUpdate`）。
+它在配置面板里显示为「数据统计」，能勾能存，但**全仓没有任何代码读取它**——勾了不生效。
+
+框架没有遥测后端、没有埋点 SDK，也不应该替使用者决定收集什么数据。所以按与自动更新相同的处理原则：
+
+- **删除** `features.analytics`：类型、默认值、schema、配置面板、中英文案、用例一并移除
+- **改用 recipe 承载扩展价值**：README 新增「新增一个功能开关」，五步写清怎么加自己的 flag（类型 → 默认值 → schema → 面板 → 消费），并说明框架不内置遥测
+- 旧配置里的该字段会按未知键裁剪（首次裁剪留 `.bak`）
+
+### 验证结果
+
+- 全仓 `grep analytics` 无残留（除路线图历史记录）
+- `FeatureFlags` 现在只剩 `developerTools` 一个真实开关
+- `typecheck` / `lint` / `format:check` / `test` / `build` / `smoke` 全绿

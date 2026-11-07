@@ -161,6 +161,20 @@ await configStore.updateConfig({ language: 'en-US' }); // zh-CN / en-US
 - 新增语言：在 `src/shared/i18n` 加一份 `AppMessages`，再补进 `SUPPORTED_LOCALES`；`schema` 会自动放行
 - 新增主题色：只改 `theme.css` 里的变量，不要在组件里写死颜色
 
+### 新增一个功能开关
+
+框架只内置一个开关 `features.developerTools`（控制开发态自动打开 DevTools，以及生产态是否放行开发者工具）。需要自己的开关时，按下面五步加，类型与 schema 都会兜底：
+
+1. `src/shared/types/index.ts`：在 `FeatureFlags` 加字段
+2. `src/shared/config/defaults.ts`：给默认值（主进程与渲染进程共用这一份）
+3. `src/shared/config/schema.ts`：加 `'boolean'` 白名单（漏加会被拒绝写入）
+4. `src/renderer/components/ConfigPanel.vue`：加复选框，`handleFeatureToggle('yourFlag', ...)`
+5. 消费：主进程 `configModule.getValue<boolean>('features.yourFlag')`，渲染端 `configStore.config.features.yourFlag`
+
+文案在 `src/shared/i18n` 补中英文两条即可。
+
+> 框架**不内置遥测/埋点**：采集什么数据、是否上报、上报到哪，都由应用层自己决定。需要"数据统计"开关的话，按上面的 recipe 加一个属于你业务的 flag。
+
 ### 配置
 
 ```ts
