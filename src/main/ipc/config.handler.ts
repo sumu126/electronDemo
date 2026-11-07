@@ -22,7 +22,8 @@ export class ConfigHandler extends BaseIpcHandler {
     });
   }
 
-  async updateConfig(_event: IpcMainInvokeEvent, updates: Partial<AppConfig>): Promise<void> {
+  // 入参来自渲染进程，类型不可信：交给 ConfigModule 用 schema 校验
+  async updateConfig(_event: IpcMainInvokeEvent, updates: unknown): Promise<void> {
     return this.handleAsync<void>(() => {
       return this.configModule.updateConfig(updates);
     }).then(response => {

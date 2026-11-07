@@ -3,6 +3,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ensureDir, deepMerge } from '@shared/utils';
 import { createDefaultConfig } from '@shared/config/defaults';
+import {
+  findUnknownConfigKeys,
+  isPlainObject,
+  sanitizeConfigUpdate,
+  stripUnknownConfigKeys,
+} from '@shared/config/schema';
 import { AppConfig } from '@shared/types';
 import { APP_CONSTANTS } from '@shared/constants';
 
@@ -37,14 +43,29 @@ export class ConfigModule {
     try {
       // 确保用户数据目录存在
       await ensureDir(path.dirname(this.configPath));
-      
+
       // 检查配置文件是否存在
       try {
         const configFile = await fs.readFile(this.configPath, 'utf-8');
-        const savedConfig = JSON.parse(configFile);
-        
-        // 深度合并默认配置和保存的配置
-        this.config = deepMerge(this.getDefaultConfig(), savedConfig);
+        const savedConfig: unknown = JSON.parse(configFile);
+
+        if (!isPlainObject(savedConfig)) {
+          throw new Error('config.json 不是对象');
+        }
+
+        // 旧版本残留的未知键：先备份再裁剪，避免污染运行时与无限累积
+        const unknownKeys = findUnknownConfigKeys(savedConfig);
+
+        if (unknownKeys.length > 0) {
+          await this.backupConfigFile();
+          console.warn(
+            `Dropping unknown config keys (backup: ${this.configPath}.bak): ${unknownKeys.join(', ')}`,
+          );
+        }
+
+        // 深度合并默认配置和已校验的保存配置
+        this.config = deepMerge(this.getDefaultConfig(), stripUnknownConfigKeys(savedConfig));
+        await this.saveConfig();
       } catch (error) {
         // 如果配置文件不存在或解析失败，则使用默认配置
         console.warn('Failed to load config, using defaults:', error);
@@ -54,6 +75,17 @@ export class ConfigModule {
       console.error('Error loading config:', error);
       // 出错时也使用默认配置
       this.config = this.getDefaultConfig();
+    }
+  }
+
+  // 只在首次裁剪前备份，避免覆盖掉上一份干净备份
+  private async backupConfigFile(): Promise<void> {
+    const backupPath = `${this.configPath}.bak`;
+
+    try {
+      await fs.access(backupPath);
+    } catch {
+      await fs.copyFile(this.configPath, backupPath);
     }
   }
 
@@ -86,9 +118,10 @@ export class ConfigModule {
     return { ...this.config }; // 返回副本以防止外部直接修改
   }
 
-  public async updateConfig(updates: Partial<AppConfig>): Promise<void> {
-    // 深合并，避免局部更新（如只改一个 feature 开关）覆盖整个对象
-    this.config = deepMerge(this.config, updates);
+  public async updateConfig(updates: unknown): Promise<void> {
+    // 先校验再深合并，避免局部更新覆盖同级字段，也避免未知/非法值进入配置
+    const safeUpdates = sanitizeConfigUpdate(updates);
+    this.config = deepMerge(this.config, safeUpdates);
     await this.saveConfig();
   }
 
@@ -98,19 +131,14 @@ export class ConfigModule {
   }
 
   public async setValue<T>(keyPath: string, value: T): Promise<void> {
-    // 解析并设置嵌套属性
+    // 复用手动更新的校验路径：把 'a.b.c' 还原成嵌套对象再走 updateConfig
     const keys = keyPath.split('.');
-    const lastKey = keys.pop()!;
-    let current: any = this.config;
-    
-    for (const key of keys) {
-      if (current[key] === undefined) {
-        current[key] = {};
-      }
-      current = current[key];
+    let update: unknown = value;
+
+    for (let index = keys.length - 1; index >= 0; index -= 1) {
+      update = { [keys[index]]: update };
     }
-    
-    current[lastKey] = value;
-    await this.saveConfig();
+
+    await this.updateConfig(update);
   }
 }
