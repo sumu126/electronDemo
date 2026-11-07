@@ -1,12 +1,30 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
-      <div class="modal-container" :class="{ centered }" :style="width ? { width } : undefined" @click.stop>
+    <div v-if="visible" class="modal-overlay" role="presentation" @click="handleOverlayClick">
+      <div
+        ref="containerRef"
+        class="modal-container"
+        :class="{ centered }"
+        :style="width ? { width } : undefined"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title || '对话框'"
+        tabindex="-1"
+        @click.stop
+      >
         <div class="modal-header">
           <slot name="header">
             <h3>{{ title }}</h3>
           </slot>
-          <button class="modal-close-btn" @click="closeModal">&times;</button>
+          <button
+            v-if="closable"
+            class="modal-close-btn"
+            type="button"
+            aria-label="关闭"
+            @click="closeModal"
+          >
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <slot></slot>
@@ -20,6 +38,8 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+
 interface Props {
   visible: boolean;
   title?: string;
@@ -42,6 +62,24 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+const containerRef = ref<HTMLElement | null>(null);
+// 关闭后把焦点还给打开弹窗的元素，避免键盘用户丢失位置
+let previouslyFocused: HTMLElement | null = null;
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+const focusableElements = (): HTMLElement[] =>
+  Array.from(containerRef.value?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []).filter(
+    element => element.offsetParent !== null,
+  );
+
 const handleOverlayClick = () => {
   if (props.maskClosable) {
     closeModal();
@@ -54,6 +92,65 @@ const closeModal = () => {
     emit('close');
   }
 };
+
+// ESC 关闭 + Tab 焦点陷阱：弹窗打开时焦点不应跑到背后的页面上
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && props.closable) {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+
+  if (event.key !== 'Tab') {
+    return;
+  }
+
+  const elements = focusableElements();
+
+  if (elements.length === 0) {
+    event.preventDefault();
+    containerRef.value?.focus();
+    return;
+  }
+
+  const first = elements[0];
+  const last = elements[elements.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+const release = () => {
+  document.removeEventListener('keydown', handleKeydown);
+  document.body.style.overflow = '';
+  previouslyFocused?.focus();
+  previouslyFocused = null;
+};
+
+watch(
+  () => props.visible,
+  async (visible) => {
+    if (!visible) {
+      release();
+      return;
+    }
+
+    previouslyFocused = document.activeElement as HTMLElement | null;
+    document.addEventListener('keydown', handleKeydown);
+    document.body.style.overflow = 'hidden';
+
+    await nextTick();
+    (focusableElements()[0] ?? containerRef.value)?.focus();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(release);
 </script>
 
 <style scoped>
