@@ -3,6 +3,8 @@ export const APP_CONSTANTS = {
   NAME: 'Electron-Vue3 Framework',
   VERSION: '1.0.0',
   COMPANY: 'Electron-Vue3 Team',
+  // 需与 package.json 的 build.appId 保持一致；Windows 通知与任务栏身份依赖它
+  APP_ID: 'com.electron-vue3.demo',
 };
 
 // IPC通道常量（仅保留已实现并注册的通道）

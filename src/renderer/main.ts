@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import { router } from './router';
+import { useConfigStore } from './stores/config.store';
 
 // 创建应用实例
 const app = createApp(App);
@@ -19,6 +20,14 @@ app.config.errorHandler = (error, _instance, info) => {
 
 window.addEventListener('unhandledrejection', event => {
   console.error('[renderer] Unhandled promise rejection:', event.reason);
+});
+
+// 窗口标题以配置中的 appName 为准（构建脚本不再改写 index.html）
+const configStore = useConfigStore();
+void configStore.ensureLoaded().finally(() => {
+  if (configStore.config.appName) {
+    document.title = configStore.config.appName;
+  }
 });
 
 // 挂载应用

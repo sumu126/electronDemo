@@ -10,6 +10,7 @@ export class ConfigModule {
   public readonly name = 'ConfigModule';
   private config: AppConfig;
   private configPath: string;
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.configPath = path.join(app.getPath('userData'), 'config.json');
@@ -56,10 +57,25 @@ export class ConfigModule {
     }
   }
 
-  public async saveConfig(): Promise<void> {
+  public saveConfig(): Promise<void> {
+    // 串行化：窗口状态防抖落盘与 setValue 可能并发，排队执行避免旧快照覆盖新快照
+    const snapshot = JSON.stringify(this.config, null, 2);
+
+    this.writeQueue = this.writeQueue
+      .catch(() => undefined)
+      .then(() => this.writeSnapshot(snapshot));
+
+    return this.writeQueue;
+  }
+
+  private async writeSnapshot(snapshot: string): Promise<void> {
+    // 原子写：先写临时文件再 rename，进程在写一半时退出不会留下损坏的 config.json
+    const tempPath = `${this.configPath}.tmp`;
+
     try {
       await ensureDir(path.dirname(this.configPath));
-      await fs.writeFile(this.configPath, JSON.stringify(this.config, null, 2), 'utf-8');
+      await fs.writeFile(tempPath, snapshot, 'utf-8');
+      await fs.rename(tempPath, this.configPath);
     } catch (error) {
       console.error('Error saving config:', error);
       throw error;

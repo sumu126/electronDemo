@@ -3,7 +3,7 @@ import fs from 'fs';
 import { join } from 'path';
 
 import type { WindowConfig } from '@shared/types';
-import { isTrustedSenderUrl } from '../ipc/sender';
+import { isTrustedSenderUrl, DEV_SERVER_URL } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
@@ -42,6 +42,7 @@ export class WindowManager {
       minHeight: MIN_WINDOW_HEIGHT,
       frame: true, // 保留窗口边框和系统控制按钮
       autoHideMenuBar: true, // 隐藏默认菜单栏
+      show: false, // 等首帧渲染完成再显示，避免启动时白屏闪烁
       webPreferences: {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
@@ -52,6 +53,22 @@ export class WindowManager {
     });
 
     this.mainWindow.setBackgroundColor('#ffffff'); // 匹配你的应用主题色
+
+    // 首帧就绪后再显示：启动过程不再出现空白窗口
+    this.mainWindow.once('ready-to-show', () => {
+      if (!this.mainWindow) {
+        return;
+      }
+      if (initialState.maximized) {
+        this.mainWindow.maximize();
+      }
+      this.mainWindow.show();
+    });
+
+    // 兜底：页面加载失败时也要让窗口可见，否则应用看起来像没启动
+    this.mainWindow.webContents.on('did-fail-load', () => {
+      this.mainWindow?.show();
+    });
 
     // 窗口关闭事件 - 改为最小化到系统托盘
     this.mainWindow.on('close', (event) => {
@@ -76,10 +93,6 @@ export class WindowManager {
     this.registerNavigationGuards(this.mainWindow);
     this.registerWindowStateEvents(this.mainWindow);
 
-    if (initialState.maximized) {
-      this.mainWindow.maximize();
-    }
-
     return this.mainWindow;
   }
 
@@ -88,8 +101,11 @@ export class WindowManager {
     // 注意：Electron 45 下用 `electron .` 启动时 app.isPackaged 也会返回 true，
     // 因此这里用 process.defaultApp 判断是否为开发模式。
     if (process.defaultApp) {
-      window.loadURL('http://localhost:5173');
-      window.webContents.openDevTools();
+      window.loadURL(DEV_SERVER_URL);
+      // 开发者工具由配置开关控制，让 features.developerTools 真正生效
+      if (this.configModule?.getValue<boolean>('features.developerTools')) {
+        window.webContents.openDevTools();
+      }
     } else {
       // 在打包版本中，使用资源路径
       window.loadFile(join(process.resourcesPath, 'dist/index.html'));
@@ -184,6 +200,9 @@ export class WindowManager {
         ...(options.webPreferences || {}),
       },
     });
+
+    // 子窗口同样施加导航与外链守卫，避免安全假设只在主窗口成立
+    this.registerNavigationGuards(window);
 
     // 窗口关闭时从映射中移除
     window.on('closed', () => {

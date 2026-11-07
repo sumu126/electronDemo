@@ -3,8 +3,7 @@ import type { ElectronAPI, IpcChannel } from '@shared/types';
 
 // 渲染进程允许调用的通道白名单。
 // 必须内联而不是从共享模块导入：开启 sandbox 后 preload 无法 require 相对路径的分块文件。
-// 类型约束保证这里的每一项都存在于 IpcInvokeMap 中。
-const allowedChannels = new Set<string>([
+const ALLOWED_CHANNELS = [
   'ping',
   'system:info',
   'config:get',
@@ -14,7 +13,15 @@ const allowedChannels = new Set<string>([
   'window:minimize',
   'window:maximize',
   'window:close',
-] as const satisfies readonly IpcChannel[]);
+] as const satisfies readonly IpcChannel[];
+
+// 完整性校验：新增 IpcChannel 却漏加白名单时，下面这行会直接报类型错误，
+// 而不是等到运行时才看到 "Blocked IPC channel"。
+type UncoveredChannel = Exclude<IpcChannel, (typeof ALLOWED_CHANNELS)[number]>;
+const _allChannelsCovered: UncoveredChannel extends never ? true : never = true;
+void _allChannelsCovered;
+
+const allowedChannels = new Set<string>(ALLOWED_CHANNELS);
 
 const invoke = (channel: string, ...args: unknown[]): Promise<any> => {
   if (!allowedChannels.has(channel)) {

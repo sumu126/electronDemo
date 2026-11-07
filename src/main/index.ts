@@ -5,6 +5,7 @@ import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
 import { ConfigModule } from './modules/config.module';
 import { Logger } from './utils/logger';
+import { APP_CONSTANTS } from '@shared/constants';
 
 class App {
   private windowManager: WindowManager;
@@ -23,6 +24,12 @@ class App {
 
   public async init(): Promise<void> {
     await app.whenReady();
+
+    // Windows 上任务栏身份与托盘气泡通知依赖 AppUserModelId，缺失时通知可能不显示
+    if (process.platform === 'win32') {
+      app.setAppUserModelId(APP_CONSTANTS.APP_ID);
+    }
+
     this.logger.info('Application starting');
 
     // 初始化模块

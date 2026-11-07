@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 
 import { build } from 'vite';
-import { join } from 'path';
-import { rm, mkdir, readFile, writeFile } from 'fs/promises';
-
-// 动态加载package.json
-const packageJson = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf-8'));
+import { rm, mkdir } from 'fs/promises';
 
 async function buildMain() {
   console.log('Building main process...');
@@ -31,28 +27,6 @@ async function copyAssets() {
   console.log('Assets copied successfully!');
 }
 
-async function updateHtmlTitle() {
-  console.log('Updating HTML title with app name...');
-  try {
-    const indexPath = join(process.cwd(), 'index.html');
-    let htmlContent = await readFile(indexPath, 'utf-8');
-    
-    // 获取应用名称，优先使用 productName，否则使用 name
-    const appName = packageJson.productName || packageJson.name || 'Electron Vue3 Application';
-    
-    // 替换标题
-    htmlContent = htmlContent.replace(
-      /<title>.*<\/title>/,
-      `<title>${appName}</title>`
-    );
-    
-    await writeFile(indexPath, htmlContent, 'utf-8');
-    console.log('HTML title updated successfully!');
-  } catch (error) {
-    console.error('Error updating HTML title:', error);
-  }
-}
-
 async function main() {
   try {
     // 清理之前的构建产物
@@ -63,20 +37,17 @@ async function main() {
     } catch {
       console.log('No previous build to clean.');
     }
-    
+
     // 创建输出目录
     await mkdir('./dist', { recursive: true });
     await mkdir('./dist-electron', { recursive: true });
-    
+
     // 并行构建主进程和渲染进程
     await Promise.all([buildMain(), buildRenderer()]);
-    
+
     // 复制必要资源
     await copyAssets();
-    
-    // 更新HTML标题
-    await updateHtmlTitle();
-    
+
     console.log('Build completed successfully!');
   } catch (error) {
     console.error('Build failed:', error);
