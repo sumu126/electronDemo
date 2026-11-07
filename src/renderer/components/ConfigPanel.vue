@@ -47,17 +47,6 @@
           {{ t.config.analytics }}
         </label>
       </div>
-
-      <div class="form-group checkbox-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            :checked="localConfig.features.autoUpdate"
-            @change="handleFeatureToggle('autoUpdate', ($event.target as HTMLInputElement).checked)"
-          />
-          {{ t.config.autoUpdate }}
-        </label>
-      </div>
     </div>
 
     <div class="config-actions">

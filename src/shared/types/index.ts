@@ -20,7 +20,6 @@ export interface WindowConfig {
 export interface FeatureFlags {
   developerTools: boolean;
   analytics: boolean;
-  autoUpdate: boolean;
 }
 
 export interface TrayConfig {

@@ -19,7 +19,6 @@ export function createDefaultConfig(overrides: Partial<AppConfig> = {}): AppConf
     features: {
       developerTools: false,
       analytics: true,
-      autoUpdate: true,
     },
     tray: {
       hasShownFirstTimeNotice: false,

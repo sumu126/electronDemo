@@ -35,7 +35,6 @@ const CONFIG_SCHEMA: SchemaObject = {
   features: {
     developerTools: 'boolean',
     analytics: 'boolean',
-    autoUpdate: 'boolean',
   },
   tray: {
     hasShownFirstTimeNotice: 'boolean',

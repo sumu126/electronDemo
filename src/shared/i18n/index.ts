@@ -39,7 +39,6 @@ export interface AppMessages {
     features: string;
     developerTools: string;
     analytics: string;
-    autoUpdate: string;
     save: string;
     saving: string;
     reset: string;
@@ -82,7 +81,6 @@ const zhCN: AppMessages = {
     features: '功能设置',
     developerTools: '开发者工具',
     analytics: '数据统计',
-    autoUpdate: '自动更新',
     save: '保存配置',
     saving: '保存中...',
     reset: '重置',
@@ -146,7 +144,6 @@ const enUS: AppMessages = {
     features: 'Features',
     developerTools: 'Developer tools',
     analytics: 'Analytics',
-    autoUpdate: 'Auto update',
     save: 'Save settings',
     saving: 'Saving...',
     reset: 'Reset',

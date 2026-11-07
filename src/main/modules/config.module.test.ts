@@ -47,7 +47,7 @@ describe('ConfigModule', () => {
     expect(saved.appName).toBe('test-app');
     expect(saved.version).toBe('9.9.9');
     expect(saved.theme).toBe('auto');
-    expect(saved.features.autoUpdate).toBe(true);
+    expect(saved.features.analytics).toBe(true);
     expect(module.getConfig().appName).toBe('test-app');
   });
 

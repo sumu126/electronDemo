@@ -1,4 +1,4 @@
-import { createPinia, setActivePinia } from 'pinia';
+﻿import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useConfigStore } from './config.store';
 
@@ -15,14 +15,14 @@ afterEach(() => {
 });
 
 describe('useConfigStore', () => {
-  it('从主进程加载配置', async () => {
+  it('浠庝富杩涚▼鍔犺浇閰嶇疆', async () => {
     const remoteConfig = {
       appName: 'Remote',
       version: '1.0.0',
       theme: 'dark',
       language: 'zh-CN',
       window: { width: 1000, height: 700 },
-      features: { developerTools: false, analytics: true, autoUpdate: true },
+      features: { developerTools: false, analytics: true },
       tray: { hasShownFirstTimeNotice: false },
     };
     invoke.mockResolvedValueOnce(remoteConfig);
@@ -35,14 +35,14 @@ describe('useConfigStore', () => {
     expect(store.loaded).toBe(true);
   });
 
-  it('更新配置后从主进程回读，不写 localStorage', async () => {
+  it('鏇存柊閰嶇疆鍚庝粠涓昏繘绋嬪洖璇伙紝涓嶅啓 localStorage', async () => {
     invoke.mockResolvedValueOnce(undefined).mockResolvedValueOnce({
       appName: 'Updated',
       version: '1.0.0',
       theme: 'light',
       language: 'zh-CN',
       window: { width: 1000, height: 700 },
-      features: { developerTools: false, analytics: true, autoUpdate: true },
+      features: { developerTools: false, analytics: true },
       tray: { hasShownFirstTimeNotice: false },
     });
 

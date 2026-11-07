@@ -19,6 +19,6 @@ describe('createDefaultConfig', () => {
 
     expect(config.appName).toBe('Demo');
     expect(config.window).toEqual({ width: 800, height: 600 });
-    expect(config.features.autoUpdate).toBe(true);
+    expect(config.features).toEqual({ developerTools: false, analytics: true });
   });
 });
