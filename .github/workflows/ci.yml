@@ -41,3 +41,12 @@ jobs:
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
         run: node scripts/smoke.mjs
+
+      # 真实交互 e2e：驱动渲染进程点开配置、保存、切语言，校验整条 IPC 链路
+      - name: E2E (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/e2e.mjs
+
+      - name: E2E (Windows)
+        if: runner.os == 'Windows'
+        run: node scripts/e2e.mjs

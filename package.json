@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "smoke": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "prepare": "node scripts/install-hooks.mjs",
     "electron:dev": "node scripts/dev.mjs",
     "electron:build": "npm run build && electron-builder --dir --publish never",
