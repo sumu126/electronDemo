@@ -1,0 +1,7 @@
+# 统一用 LF：Windows 上 core.autocrlf 会把工作区写成 CRLF，
+# 导致 prettier --check 与 CI（Linux）结果不一致
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.jar binary
