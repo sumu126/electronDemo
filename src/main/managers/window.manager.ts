@@ -23,6 +23,11 @@ export class WindowManager {
     this.quitting = true;
   }
 
+  // macOS 上 activate 可能发生在退出流程被打断之后，需要复位才能继续按托盘语义关闭
+  public resetQuitting(): void {
+    this.quitting = false;
+  }
+
   public createMainWindow(): BrowserWindow {
     const primaryDisplay = screen.getPrimaryDisplay();
     const savedWindow = this.configModule?.getValue<WindowConfig>('window');
@@ -70,14 +75,20 @@ export class WindowManager {
       this.mainWindow?.show();
     });
 
-    // 窗口关闭事件 - 改为最小化到系统托盘
+    // 窗口关闭事件 - 最小化到系统托盘；托盘不可用时允许真正关闭
     this.mainWindow.on('close', (event) => {
-      if (!this.quitting) {
-        event.preventDefault();
-        this.mainWindow?.hide();
-        this.setupTray();
+      if (this.quitting) {
         return;
       }
+
+      // 托盘建不起来时不再拦截关闭，否则窗口隐藏后用户没有任何入口可以唤回
+      if (!this.setupTray()) {
+        this.destroyTray();
+        return;
+      }
+
+      event.preventDefault();
+      this.mainWindow?.hide();
     });
 
     // 窗口真正关闭事件
@@ -236,11 +247,11 @@ export class WindowManager {
     return this.mainWindow;
   }
 
-  private setupTray(): void {
+  private setupTray(): boolean {
     // 如果托盘已存在，确保托盘可见并显示通知
     if (this.tray) {
       this.checkAndShowTrayNotification();
-      return;
+      return true;
     }
 
     // 创建托盘图标
@@ -257,15 +268,13 @@ export class WindowManager {
 
     try {
       const trayIcon = nativeImage.createFromPath(iconPath);
-      if (trayIcon.isEmpty()) {
-        // 使用默认图标
-        this.tray = new Tray(nativeImage.createEmpty());
-      } else {
-        this.tray = new Tray(trayIcon);
-      }
-    } catch {
-      // 使用默认图标
-      this.tray = new Tray(nativeImage.createEmpty());
+      // 图标缺失时用空图标占位，托盘本身仍然可用（可点击恢复窗口）
+      this.tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
+    } catch (error) {
+      // 托盘建不起来（部分 Linux 桌面无状态栏）时返回 false，调用方据此允许关窗
+      console.error('Failed to create tray:', error);
+      this.tray = null;
+      return false;
     }
 
     // 设置托盘提示，使用配置中的应用名称
@@ -308,6 +317,8 @@ export class WindowManager {
 
     // 设置托盘时显示提醒
     this.checkAndShowTrayNotification();
+
+    return true;
   }
 
   private async checkAndShowTrayNotification(): Promise<void> {

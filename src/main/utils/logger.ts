@@ -19,8 +19,13 @@ const stringifyMeta = (meta: unknown): string => {
 
 /**
  * 主进程文件日志：同时写入 userData/logs 与标准输出。
+ *
+ * 落盘走异步串行队列：同步 appendFileSync 会在日志量上来后阻塞事件循环。
+ * 进程退出前调用 flush() 等待队列清空，保证崩溃原因不会丢在缓冲区里。
  */
 export class Logger {
+  private queue: Promise<void> = Promise.resolve();
+
   constructor(private readonly filePath: string) {
     fs.mkdirSync(dirname(filePath), { recursive: true });
   }
@@ -37,14 +42,20 @@ export class Logger {
     this.write('error', message, meta);
   }
 
+  /** 等待队列中所有日志写入完成 */
+  public flush(): Promise<void> {
+    return this.queue;
+  }
+
   private write(level: LogLevel, message: string, meta: unknown): void {
     const line = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}${stringifyMeta(meta)}`;
 
-    try {
-      fs.appendFileSync(this.filePath, `${line}\n`, 'utf-8');
-    } catch (error) {
-      console.error('Failed to write log file:', error);
-    }
+    // 单次写失败不打断后续日志：catch 收敛掉异常，队列始终保持 resolved
+    this.queue = this.queue
+      .then(() => fs.promises.appendFile(this.filePath, `${line}\n`, 'utf-8'))
+      .catch((error) => {
+        console.error('Failed to write log file:', error);
+      });
 
     if (level === 'error') {
       console.error(line);

@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe('Logger', () => {
-  it('按级别写入日志文件', () => {
+  it('按级别写入日志文件', async () => {
     const filePath = path.join(tempDir, 'logs', 'main.log');
     const logger = new Logger(filePath);
 
@@ -27,6 +27,7 @@ describe('Logger', () => {
     logger.warn('slow');
     logger.error('boom');
 
+    await logger.flush();
     const content = fs.readFileSync(filePath, 'utf-8');
 
     expect(content).toContain('[INFO] started');
@@ -34,12 +35,29 @@ describe('Logger', () => {
     expect(content).toContain('[ERROR] boom');
   });
 
-  it('序列化对象类型的附加信息', () => {
+  it('序列化对象类型的附加信息', async () => {
     const filePath = path.join(tempDir, 'meta.log');
     const logger = new Logger(filePath);
 
     logger.info('with meta', { module: 'ConfigModule' });
 
+    await logger.flush();
     expect(fs.readFileSync(filePath, 'utf-8')).toContain('with meta {"module":"ConfigModule"}');
+  });
+
+  it('并发写入保持调用顺序', async () => {
+    const filePath = path.join(tempDir, 'order.log');
+    const logger = new Logger(filePath);
+
+    for (let index = 0; index < 20; index += 1) {
+      logger.info(`line-${index}`);
+    }
+
+    await logger.flush();
+    const lines = fs.readFileSync(filePath, 'utf-8').trim().split('\n');
+
+    expect(lines).toHaveLength(20);
+    expect(lines[0]).toContain('line-0');
+    expect(lines[19]).toContain('line-19');
   });
 });

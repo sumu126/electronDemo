@@ -7,6 +7,9 @@ import { ConfigModule } from './modules/config.module';
 import { Logger } from './utils/logger';
 import { APP_CONSTANTS } from '@shared/constants';
 
+// 退出时等待模块清理的最长时间，避免 destroy 卡住导致进程无法退出
+const MODULE_DESTROY_TIMEOUT_MS = 3000;
+
 class App {
   private windowManager: WindowManager;
   private moduleManager: ModuleManager;
@@ -63,10 +66,21 @@ class App {
       this.logger.info('Application quitting');
       this.windowManager.markQuitting();
       this.windowManager.destroyTray();
+
+      // 模块清理最长等 3 秒：destroy 卡住时不能让应用永远退不出去
+      const forceQuitTimer = setTimeout(() => {
+        this.logger.warn(`Module cleanup exceeded ${MODULE_DESTROY_TIMEOUT_MS}ms, forcing quit`);
+        void this.logger.flush().finally(() => app.quit());
+      }, MODULE_DESTROY_TIMEOUT_MS);
+
       this.moduleManager
         .destroy()
         .catch(error => this.logger.error('Failed to destroy modules', error))
-        .finally(() => app.quit());
+        .finally(() => {
+          clearTimeout(forceQuitTimer);
+          // 退出前把日志队列刷完，崩溃原因才不会丢在缓冲区里
+          void this.logger.flush().finally(() => app.quit());
+        });
     });
 
     // 当所有窗口关闭时退出应用（macOS除外）
@@ -75,9 +89,12 @@ class App {
         app.quit();
       }
     });
-    
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
+        // 退出流程被打断后再次激活：复位标志，恢复「关闭到托盘」的语义
+        this.isQuitting = false;
+        this.windowManager.resetQuitting();
         this.windowManager.createMainWindow();
       }
     });
@@ -106,7 +123,8 @@ if (!gotTheLock) {
   // 全局异常兜底：记录后退出，避免静默崩溃
   process.on('uncaughtException', (error) => {
     logger.error('Uncaught exception', error);
-    app.quit();
+    // 先刷盘再退出，否则崩溃原因可能还停在队列里
+    void logger.flush().finally(() => app.quit());
   });
 
   process.on('unhandledRejection', (reason) => {
