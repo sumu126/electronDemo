@@ -57,6 +57,9 @@ const mainConfig = defineConfig({
     },
   },
   build: {
+    // 主进程跑在 Node 环境：必须走 SSR 构建，否则 Vite 会把 `process.env` 替换成 {}
+    // （表现为代码里 process.env.XXX 永远是 undefined，而且不报错）
+    ssr: true,
     rollupOptions: {
       external: ['electron', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)],
       input: {

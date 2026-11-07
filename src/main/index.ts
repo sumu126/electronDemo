@@ -11,6 +11,13 @@ import { APP_CONSTANTS } from '@shared/constants';
 // 退出时等待模块清理的最长时间，避免 destroy 卡住导致进程无法退出
 const MODULE_DESTROY_TIMEOUT_MS = 3000;
 
+// 可在启动前指定 userData 目录：CI 冒烟与便携模式需要隔离真实用户数据
+const userDataOverride = process.env.ELECTRON_USER_DATA_DIR;
+
+if (userDataOverride) {
+  app.setPath('userData', userDataOverride);
+}
+
 class App {
   private windowManager: WindowManager;
   private moduleManager: ModuleManager;
