@@ -7,9 +7,12 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +32,12 @@ jobs:
       - run: npm run test:coverage
 
       - run: npm run build
+
+      # 真正启动一次 Electron：校验配置落盘与主窗口日志，避免「门禁全绿但应用起不来」
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/smoke.mjs
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        run: node scripts/smoke.mjs
