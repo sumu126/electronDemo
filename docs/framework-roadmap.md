@@ -256,7 +256,7 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 - `features.analytics` / `features.autoUpdate` 仍无消费方（前者缺埋点方案，后者明确不做）
 - 渲染端异常仍未上报主进程日志
 - 主进程热重启只重建不保留窗口状态（重启即重新建窗，属预期）
-- 打包产物尚未接代码签名与多平台发布
+- 代码签名与发布由使用方负责（第 14 节）
 
 ## 12. 第四轮：可观测性与生产态收口（2026-11-07）
 
@@ -286,7 +286,7 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 ### 尚未处理（下一轮候选）
 
 - `features.analytics` 仍无消费方（autoUpdate 已在第 13 节移除）
-- 打包产物尚未接代码签名与多平台发布
+- 代码签名与发布由使用方负责（第 14 节）
 - 渲染端日志上报暂未做持久化队列，网络/通道异常时会静默丢弃（可接受）
 - 菜单文案依赖系统语言，尚未跟随应用内 `language` 配置
 
@@ -306,3 +306,20 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 
 - `typecheck` / `lint` / `format:check` / `test`（104 个用例）/ `build` / `smoke` 全绿
 - 旧配置里的 `features.autoUpdate` 会在加载时按未知键裁剪（首次裁剪有 `.bak` 备份），不再进入运行时
+
+## 14. 决策记录：代码签名不做，交给使用方（2026-11-07）
+
+维护者确认：**框架不做代码签名**。签名、公证、分发属于每个开发者/团队的发布环节，
+框架不该替使用者绑定证书与发布渠道。
+
+因此：
+
+- `package.json` 与构建脚本**不提供**任何 `certificateFile` / `certificatePassword` / 公证配置，也不读取签名相关环境变量
+- 文档写明签名由使用方负责：需要签名的项目自行配置 electron-builder 的 `win.certificateFile`（或通过 `CSC_LINK` 环境变量）与 macOS 公证流程
+- `.gitignore` 增加 `*.pfx` / `*.p12` / `.env`，避免证书与本地配置被误提交
+- 未签名构建在 Windows 上会被 SmartScreen 提示、macOS 上会被 Gatekeeper 拦截，这是使用方的发布决策，不是框架缺陷
+
+### 验证结果
+
+- 构建配置无签名相关字段（`grep` 确认 `package.json` 只有 `appId` / `icon` / `nsis` 等基础项）
+- `typecheck` / `lint` / `format:check` / `test`（104 个用例）/ `build` / `smoke` 全绿
