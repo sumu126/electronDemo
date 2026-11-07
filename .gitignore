@@ -3,3 +3,12 @@ dist/
 dist-app*/
 dist-electron/
 coverage/
+
+# 本地凭据与证书：签名由使用方负责，不要提交进仓库
+.env
+.env.*
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
