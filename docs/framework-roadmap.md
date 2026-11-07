@@ -397,3 +397,39 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 - `electron-builder` 解析 `package.json` 配置通过（本机因网络超时卡在下载 Electron 二进制，
   未跑完整打包；Linux 产物的最终验证需在 Linux 或 CI 上做）
 - 其余门禁：`typecheck` / `lint` / `format:check` / `test` / `build` / `smoke` / `e2e` 全绿
+
+## 18. 文档补齐（2026-11-07）
+
+第五轮评审指出"缺架构文档"，且两份老文档已经和代码脱节——照着写会直接报错。本轮把文档按
+"读者带着什么问题来"重新分工。
+
+### 新增
+
+- **`docs/架构.md`**：讲"为什么"。分层与单向依赖、一条 IPC 的完整链路与三层契约、启动顺序及其
+  原因、配置三层结构与迁移、日志/插件/安全模型（含威胁假设与已知边界）、扩展点对照表、
+  十个关键取舍、各道门禁能挡住什么。
+
+### 重写
+
+- **`docs/API实现示例.md`**：旧版 8 步流程全是过时 API（`BaseIpcHandler`、`handleAsync`、
+  `IpcResponse`、`user.service`、`file:read`）。新版按当前契约走完 9 步：
+  类型/通道 → 模块 → 注册 → handler → 通道注册 → preload 白名单 → store（含 `toPlain`）
+  → 组件（主题变量 + i18n）→ 文案 → 测试 → 验证清单，并附 8 条常见坑对照表。
+- **`docs/框架功能详解.md`**：从 433 行散文改成"功能索引 + 源码位置"，补 IPC 通道表
+  （参数/返回/说明）、配置项与消费方对照表、"与旧版本的差异"（明确列出已删除的 6 项能力）。
+  同时纠正旧文里"支持 macOS""文件处理器""多窗口支持""CPU/磁盘信息"等与代码不符的描述。
+- **`docs/框架使用指南.md`**：聚焦"五分钟跑起来 / 常见任务 / 调试 / 打包 / 真实 FAQ"，
+  补上这几个实际踩过的坑：`ELECTRON_RUN_AS_NODE`、Proxy 克隆、schema 拒绝未知键、
+  托盘缺失、Linux 打包限制。
+
+### 一致性
+
+- README 的文档区改为"想知道什么 → 看哪份"对照表，并链接新增的架构文档
+- 文档里所有命令、路径、配置键都对照当前代码校验过（`grep` 掉 `BaseIpcHandler` /
+  `file:read` / `analytics` 等已删概念，仅路线图历史记录保留）
+
+### 验证结果
+
+- 文档中的命令与 `package.json` scripts 逐条比对一致
+- 文档中的配置键与 `shared/config/schema.ts` 一致
+- `format:check` / `typecheck` / `lint` / `test`（105 用例）/ `build` / `smoke` / `e2e` 全绿
