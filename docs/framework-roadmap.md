@@ -176,3 +176,43 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 - `theme` / `language` / `analytics` / `autoUpdate` 四个配置项仍无消费方
 - `IpcResponse` 信封在 handler 内拆包后不再跨进程，属可删抽象
 - CI 未覆盖 Windows 与真实 Electron 启动
+
+## 10. 第二轮优化实施记录（2026-11-07）
+
+按「还有哪些可优化的地方」的复查结果做的第二批收敛，重点是攻击面、类型契约完整度与门禁机械化。
+
+### 安全：移除一条提权链
+
+1. **删除 `file:read` / `file:write`**（`FileHandler` 一并移除）。这两个通道在渲染端没有任何消费方，却能往 `userData/modules` 写 `.cjs`；而该目录会在下次启动时被 `createRequire` 执行，等于「写插件 → 重启生效」的持久化 RCE，属于白送的攻击面
+2. **配置写入加 schema 校验**（`src/shared/config/schema.ts`）。`config:update` 之前把任意 JSON 直接 `deepMerge`：未知键永久驻留（现有 `config.json` 里就有 `network.*`、`window.opacity`）、错误类型进入运行时、`__proto__` 可改写原型。现在未知键 / 类型不符 / 非法枚举 / 原型键一律报错；加载时先备份 `config.json.bak` 再裁剪
+
+### 类型与运行时
+
+3. **IPC 参数也纳入契约**：`IpcInvokeMap` 由「只声明返回值」改为 `{ args, returns }`，`invoke` 变元组签名，`invoke('config:update', 123)` 这类错误在编译期失败
+4. **托盘不可用时允许关窗**：原先托盘创建失败仍会 `hide()`，窗口消失且无入口唤回；`setupTray()` 现在返回是否可用
+5. **退出流程加 3 秒超时**：模块 `destroy()` 卡住时不再导致应用永远退不出去
+6. **日志改异步串行队列 + `flush()`**：`appendFileSync` 会阻塞主进程；`uncaughtException` 与退出流程先刷盘再退出
+7. **Modal 补齐键盘可达性**：ESC 关闭、Tab 焦点陷阱、焦点归还、滚动锁、`role="dialog"` / `aria-modal`；`closable=false` 时不再渲染无效的关闭按钮
+
+### 工程化
+
+8. **门禁机械化**：新增 `format:check`、`scripts/install-hooks.mjs`（`prepare` 自动安装 pre-commit 钩子，跑五项门禁，`SKIP_GATES=1` 可跳过）；CI 增加格式校验并改用 `test:coverage`
+9. **覆盖率从「未知」变「有基线」**：接入 `@vitest/coverage-v8`，实测 statements 29.77% / branches 37.19% / functions 20% / lines 30.05%，阈值取略低于基线的值防止倒退
+10. **锁定运行时**：`engines`（node >=22.12 / npm >=10）、`packageManager`、`.nvmrc`
+11. **全仓 Prettier 对齐**：一次性格式化 26 个文件（纯格式），之后由 `format:check` 防漂移
+12. **产物拆 vendor 块**：`manualChunks` 把 vue / vue-router / pinia 拆出（Vite 8 要求函数形式），业务改动不再让框架层 hash 变化
+13. **文档收口**：`docments/` 目录拼写错误且与 `docs/` 重叠，合并到 `docs/`；README 与两份详细文档同步更新（移除文件通道说明、schema 校验、五项门禁、覆盖率基线）
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test`（50 个用例，较上轮 +13）/ `build` 全绿
+- `test:coverage` 通过阈值；vendor 拆分后产物为 `index 4.53 kB` + `HomeView 7.93 kB` + `vendor 99.62 kB`
+- pre-commit 钩子经 `git hook run pre-commit` 实测可执行并通过
+- 配置 schema 新增 10 条用例（未知键、嵌套未知键、类型、枚举、`__proto__`、裁剪）
+
+### 尚未处理（下一轮候选）
+
+- 24 处 `console.*` 仍未接入 `Logger`；渲染端异常未上报主进程
+- `theme` / `language` / `analytics` / `autoUpdate` 仍无消费方
+- 组件层无测试（无 jsdom），覆盖率 30% 主要来自纯函数与主进程逻辑
+- 主进程热重启未接入；CI 仍是单平台、不启动真实 Electron
