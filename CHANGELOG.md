@@ -45,6 +45,7 @@
 - **生产 CSP**：`ws://localhost:5173` 只在开发态注入
 - **Windows 通知**：补 `AppUserModelId`
 - **启动体验**：`show: false` + `ready-to-show`，消除白屏闪烁；`did-fail-load` 兜底显示
+- **配置保存报 `An object could not be cloned.`**：Vue 的 ref/reactive 是 Proxy，无法被 IPC 的结构化克隆复制。配置更新与日志上报现在先在渲染进程转成纯数据再 `invoke`；失败提示也从原始英文异常改成可读文案并写入日志
 
 ### Removed
 
