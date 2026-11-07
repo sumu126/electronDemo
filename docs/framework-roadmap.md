@@ -258,3 +258,35 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 - 渲染端异常仍未上报主进程日志
 - 主进程热重启只重建不保留窗口状态（重启即重新建窗，属预期）
 - 打包产物尚未接代码签名与多平台发布
+
+## 12. 第四轮：可观测性与生产态收口（2026-11-07）
+
+上一轮留下的「渲染端异常未上报」与主进程零测试优先处理，同时补上生产态一个被忽略的口子。
+
+### 可观测性
+
+1. **渲染端异常上报**：新增 `log:report` 通道与 `renderer/utils/report`，`errorHandler`、`unhandledrejection`、`AppErrorBoundary`、`useSystemInfo` 的异常写进 `main.log`。通道对渲染进程开放，因此自身必须设防：级别白名单、单条截断 2000 字符、10 秒 50 条滑动窗口限流（丢弃时每 50 条告警一次）
+2. **启动耗时打点**：`Startup completed` 记录 `ready` / `modules` / `ipc` / `window` / `total` 分段耗时，冒烟脚本会断言这条日志存在
+
+### 生产态收口
+
+3. **DevTools 受配置控制**：未设置应用菜单时 Electron 用默认菜单，View 里有 Toggle Developer Tools，打包后的用户按 Alt 就能打开 DevTools。现在菜单由 `features.developerTools` 决定是否包含该项，并拦截 F12 / Ctrl+Shift+I / Cmd+Alt+I，`devtools-opened` 兜底关闭
+4. **最小可用应用菜单**：`menu.manager` 基于原生 role 构建，菜单文字跟随系统语言；macOS 保留 `appMenu` 以免系统快捷键失效
+
+### 测试
+
+5. **主进程关键模块单测**：`ConfigModule`（默认值、未知键裁剪 + .bak、非法更新不落盘、深合并、setValue 校验、并发串行、原子写、损坏回退）、`IpcManager`（全通道注册、来源拦截、透传、注销、缺依赖抛错）、`app-logger`（回退与切换）
+6. **覆盖率**：statements 35.44% → 48.09%，阈值升至 46/45/42/46
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test`（104 个用例，较上轮 +30）/ `test:coverage` / `build` / `smoke` 全绿
+- 冒烟新增断言：`main.log` 必须包含 `Startup completed`
+- 主进程覆盖率从 0 提升到实测 48%，配置与 IPC 两条核心链路有安全网
+
+### 尚未处理（下一轮候选）
+
+- `features.analytics` / `features.autoUpdate` 仍无消费方
+- 打包产物尚未接代码签名与多平台发布
+- 渲染端日志上报暂未做持久化队列，网络/通道异常时会静默丢弃（可接受）
+- 菜单文案依赖系统语言，尚未跟随应用内 `language` 配置

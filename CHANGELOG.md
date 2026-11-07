@@ -19,6 +19,10 @@
 - **插件文档**：`docs/插件开发.md` 与 `docs/examples/hello-module.cjs`，说明能力边界与安全清单
 - **运行时锁定**：`engines`、`packageManager`、`.nvmrc`
 - **userData 覆盖**：支持 `ELECTRON_USER_DATA_DIR`，便于便携模式与 CI 隔离
+- **渲染端异常上报**：新增 `log:report` 通道与 `renderer/utils/report`，`errorHandler`、`unhandledrejection`、`AppErrorBoundary`、`useSystemInfo` 的异常写进 `main.log`；通道自带级别白名单、2000 字符截断与 10 秒 50 条限流
+- **启动耗时打点**：`Startup completed` 记录 `ready` / `modules` / `ipc` / `window` / `total` 分段耗时
+- **应用菜单**：基于原生 role 的菜单（菜单文字跟随系统语言），macOS 保留 `appMenu`
+- **主进程单测**：为 `ConfigModule`、`IpcManager`、`app-logger` 补 electron mock 用例，覆盖率 35% → 48%
 
 ### Changed
 
@@ -45,9 +49,11 @@
 ### Security
 
 - **移除 `file:read` / `file:write`**：这两个通道能写进 `userData/modules`，而该目录会在下次启动时被执行，等于给渲染进程留下「写插件 → 重启生效」的持久化提权链。框架不再提供通用文件读写通道
+- **生产态收起 DevTools**：默认菜单里的「开发者工具」会让打包后的用户打开 DevTools 改状态、读内存数据；现在菜单项与 F12 / Ctrl+Shift+I / Cmd+Alt+I 都受 `features.developerTools` 控制，`devtools-opened` 还有兜底关闭
 - **配置原型键**：拒绝 `__proto__`、`constructor`、`prototype`
+- **日志上报限流**：`log:report` 只接受声明过的级别，消息截断 2000 字符，10 秒最多 50 条
 
 ### Docs
 
 - README 重写为框架使用指南，补充主题/语言、插件、热重启、冒烟与门禁说明
-- 路线图新增第 9、10、11 节，记录各轮改动与验证结果
+- 路线图新增第 9、10、11、12 节，记录各轮改动与验证结果

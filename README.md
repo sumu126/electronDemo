@@ -14,10 +14,10 @@
 - **路由骨架**：`vue-router` 4 + hash 模式 + 404 兜底，打包后 `file://` 可直接工作
 - **错误边界**：页面级异常被 `AppErrorBoundary` 兜住，不整页白屏
 - **模块系统**：`userData/modules` 下的 CommonJS 模块可动态加载，单个模块失败不影响启动
-- **日志与异常**：主进程异步文件日志（退出前刷盘）+ 全局异常兜底
+- **日志与异常**：主进程异步文件日志（退出前刷盘）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
 - **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
 - **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
-- **安全默认**：`sandbox: true`、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道
+- **安全默认**：`sandbox: true`、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
 
 ## 技术栈
 
@@ -188,7 +188,16 @@ await configStore.updateConfig({ theme: 'dark' });
 - 主进程日志：`userData/logs/main.log`，异步串行写入（不阻塞事件循环）
 - 退出与崩溃路径会先 `flush()` 再退出，崩溃原因不会停在缓冲区
 - `uncaughtException` / `unhandledRejection` 会记录后兜底
-- 渲染端已设置 `app.config.errorHandler` 与 `unhandledrejection`
+- **渲染端异常也会进同一个文件**：`errorHandler`、`unhandledrejection`、`AppErrorBoundary`、`useSystemInfo` 都走 `log:report`，带 `[renderer]` 前缀
+- 上报通道自我约束：级别白名单、单条截断 2000 字符、10 秒 50 条滑动窗口限流
+- 启动会记录分段耗时（`Startup completed`）：`ready` / `modules` / `ipc` / `window` / `total` 单位毫秒
+
+```ts
+import { reportError, reportInfo } from '@/utils/report';
+
+reportInfo('user opened settings');
+reportError('save failed', error, { module: 'SettingsView' });
+```
 
 ## 质量门禁
 
@@ -204,7 +213,7 @@ npm run build
 
 CI 额外做两件事：
 
-- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 33% / branches 40% / functions 26% / lines 33%）
+- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 46% / branches 45% / functions 42% / lines 46%）
 - 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
 
 ## 打包
@@ -226,6 +235,8 @@ npm run electron:build-win   # Windows 安装包：dist-app
 - IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；主窗口与 `createWindow` 创建的子窗口都施加导航守卫
 - **不提供通用文件读写通道**：它能写进 `userData/modules`，与动态模块加载叠加等于给渲染进程留了持久化提权链
 - 配置写入走 schema 白名单校验，拒绝未知键、错误类型与原型键
+- **生产态收起 DevTools**：除非 `features.developerTools` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截
+- 渲染端日志上报有级别白名单、长度截断与限流，避免被异常循环刷爆日志
 - CSP 禁止 `unsafe-eval`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截
 - Web 权限请求默认拒绝
 - 托盘创建失败时不会隐藏窗口（避免窗口消失且无法唤回）；退出时模块清理最长等 3 秒
