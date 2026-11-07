@@ -40,6 +40,7 @@ export interface AppMessages {
     developerTools: string;
     save: string;
     saving: string;
+    saveFailed: string;
     reset: string;
   };
   framework: {
@@ -81,6 +82,7 @@ const zhCN: AppMessages = {
     developerTools: '开发者工具',
     save: '保存配置',
     saving: '保存中...',
+    saveFailed: '保存失败，请重试（详细信息已写入日志）',
     reset: '重置',
   },
   framework: {
@@ -143,6 +145,7 @@ const enUS: AppMessages = {
     developerTools: 'Developer tools',
     save: 'Save settings',
     saving: 'Saving...',
+    saveFailed: 'Failed to save. Please retry (details are in the log).',
     reset: 'Reset',
   },
   framework: {

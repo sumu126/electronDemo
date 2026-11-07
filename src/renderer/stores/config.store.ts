@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { createDefaultConfig } from '@shared/config/defaults';
 import type { AppConfig } from '@shared/types';
+import { toPlain } from '../utils/plain';
+import { reportError } from '../utils/report';
 
 const getByPath = (source: unknown, keyPath: string): unknown =>
   keyPath.split('.').reduce<unknown>((current, key) => {
@@ -54,11 +56,14 @@ export const useConfigStore = defineStore('config', () => {
     error.value = null;
 
     try {
-      await window.electronAPI.invoke('config:update', updates);
+      // 入参通常是 ref/reactive 里的 Proxy，必须先转纯数据，否则结构化克隆直接失败
+      await window.electronAPI.invoke('config:update', toPlain(updates));
       config.value = await window.electronAPI.invoke('config:get');
       loaded.value = true;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '更新配置失败';
+      console.error('[config] update failed:', err);
+      reportError('Failed to update config', err);
     } finally {
       loading.value = false;
     }

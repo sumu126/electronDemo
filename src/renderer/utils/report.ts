@@ -1,3 +1,5 @@
+import { toPlain } from './plain';
+
 type Level = 'info' | 'warn' | 'error';
 
 const serializeError = (error: unknown): Record<string, unknown> => {
@@ -15,7 +17,10 @@ const serializeError = (error: unknown): Record<string, unknown> => {
  */
 const send = (level: Level, message: string, meta?: string | Record<string, unknown>): void => {
   try {
-    void window.electronAPI?.invoke('log:report', level, message, meta).catch(() => undefined);
+    // meta 里可能带响应式对象，同样要先转纯数据
+    void window.electronAPI
+      ?.invoke('log:report', level, message, meta === undefined ? undefined : toPlain(meta))
+      .catch(() => undefined);
   } catch {
     // 忽略
   }

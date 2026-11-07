@@ -45,8 +45,8 @@
       <button class="btn btn-secondary" @click="resetConfig">{{ t.config.reset }}</button>
     </div>
 
-    <div v-if="error" class="error-message">
-      {{ error }}
+    <div v-if="error" class="error-message" role="alert">
+      {{ t.config.saveFailed }}
     </div>
   </div>
 </template>
