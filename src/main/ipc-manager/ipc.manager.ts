@@ -1,15 +1,16 @@
 import { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { SystemInfoHandler } from '../ipc/system.handler';
 import { ConfigHandler } from '../ipc/config.handler';
-import { FileHandler } from '../ipc/file.handler';
 import { WindowHandler } from '../ipc/window.handler';
 import { IPC_CHANNELS } from '@shared/constants';
 import { isTrustedSenderUrl } from '../ipc/sender';
 import { ModuleManager } from '../managers/module.manager';
 import { ConfigModule } from '../modules/config.module';
+import type { IpcChannel } from '@shared/types';
 
 export interface IpcHandler {
-  channel: string;
+  // 通道名受 IpcChannel 约束：写错或写出未声明的通道会编译失败
+  channel: IpcChannel;
   handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any> | any;
 }
 
@@ -18,17 +19,15 @@ export class IpcManager {
   private handlers: Map<string, IpcHandler> = new Map();
   private systemInfoHandler: SystemInfoHandler;
   private configHandler: ConfigHandler | null = null;
-  private fileHandler: FileHandler;
   private windowHandler: WindowHandler;
   private moduleManager: ModuleManager;
 
   constructor(ipcMain: IpcMain, moduleManager: ModuleManager) {
     this.ipcMain = ipcMain;
     this.moduleManager = moduleManager;
-    
+
     // 初始化处理器
     this.systemInfoHandler = new SystemInfoHandler();
-    this.fileHandler = new FileHandler();
     this.windowHandler = new WindowHandler();
   }
 
@@ -53,19 +52,16 @@ export class IpcManager {
   public setupHandlers(): void {
     // 初始化需要模块的处理器
     this.initializeConfigHandler();
-    
+
     // 注册通用IPC处理器
     this.registerPingHandler();
-    
+
     // 注册系统信息处理器
     this.registerSystemInfoHandlers();
-    
+
     // 注册配置处理器
     this.registerConfigHandlers();
-    
-    // 注册文件操作处理器
-    this.registerFileHandlers();
-    
+
     // 注册窗口操作处理器
     this.registerWindowHandlers();
   }
@@ -102,34 +98,18 @@ export class IpcManager {
       console.error('ConfigHandler not initialized');
       return;
     }
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.CONFIG_GET,
       handler: (event: IpcMainInvokeEvent): Promise<any> => {
         return this.configHandler!.getConfig(event);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.CONFIG_UPDATE,
-      handler: (event: IpcMainInvokeEvent, updates: any): Promise<any> => {
+      handler: (event: IpcMainInvokeEvent, updates: unknown): Promise<any> => {
         return this.configHandler!.updateConfig(event, updates);
-      },
-    });
-  }
-
-  private registerFileHandlers(): void {
-    this.registerHandler({
-      channel: IPC_CHANNELS.FILE_READ,
-      handler: (event: IpcMainInvokeEvent, filePath: string): Promise<any> => {
-        return this.fileHandler.readFile(event, filePath);
-      },
-    });
-    
-    this.registerHandler({
-      channel: IPC_CHANNELS.FILE_WRITE,
-      handler: (event: IpcMainInvokeEvent, filePath: string, data: string): Promise<any> => {
-        return this.fileHandler.writeFile(event, filePath, data);
       },
     });
   }
@@ -141,27 +121,19 @@ export class IpcManager {
         return this.windowHandler.minimizeWindow(event);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.WINDOW_MAXIMIZE,
       handler: (event: IpcMainInvokeEvent): Promise<any> => {
         return this.windowHandler.maximizeWindow(event);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.WINDOW_CLOSE,
       handler: (event: IpcMainInvokeEvent): Promise<any> => {
         return this.windowHandler.closeWindow(event);
       },
     });
-  }
-
-  public getHandler(channel: string): IpcHandler | undefined {
-    return this.handlers.get(channel);
-  }
-
-  public getAllChannels(): string[] {
-    return Array.from(this.handlers.keys());
   }
 }

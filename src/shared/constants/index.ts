@@ -8,13 +8,10 @@ export const APP_CONSTANTS = {
 };
 
 // IPC通道常量（仅保留已实现并注册的通道）
+// as const 让通道名保持字面量类型，注册处才能被 IpcChannel 约束住
 export const IPC_CHANNELS = {
   // 通用通道
   PING: 'ping',
-
-  // 文件操作通道
-  FILE_READ: 'file:read',
-  FILE_WRITE: 'file:write',
 
   // 系统信息通道
   SYSTEM_INFO: 'system:info',
@@ -27,7 +24,7 @@ export const IPC_CHANNELS = {
   // 配置管理通道
   CONFIG_GET: 'config:get',
   CONFIG_UPDATE: 'config:update',
-};
+} as const;
 
 // 系统常量
 export const SYSTEM_CONSTANTS = {
