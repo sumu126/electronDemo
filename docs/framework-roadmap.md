@@ -127,17 +127,16 @@ Phase 2 已完成。Phase 3 待启动：安全收尾（CSP / 导航拦截 / 权�
 
 Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主进程热重启。
 
-### 自动更新：当前不做，接口预留
+### 自动更新：明确不做
 
-框架不承接发布渠道，因此默认关闭自动更新。真正接入时按以下顺序改，不需要动框架内核：
+这是框架的**非目标**，不是「以后再说」：
 
-1. 安装依赖：`npm i electron-updater`
-2. `package.json` 的 `build.publish` 从 `null` 改为实际渠道（示例：`{ "provider": "github", "owner": "...", "repo": "..." }`）
-3. 移除 `build.nsis.differentialPackage: false`，恢复增量更新能力
-4. 构建脚本去掉 `--publish never`（`electron:build` / `electron:build-win`）
-5. 主进程新增 updater 模块，读取已有的 `features.autoUpdate` 开关决定是否 `checkForUpdatesAndNotify()`
+- 不引入 `electron-updater`，不实现检查更新、下载、安装引导
+- 不提供更新源、发布渠道、签名与灰度能力
+- `features.autoUpdate` 开关已随之移除——留着它只会让人误以为框架支持自动更新
+- 打包配置保持 `publish: null` 与 `nsis.differentialPackage: false`，产物里不会出现 `latest.yml` 与 `.blockmap`
 
-`AppConfig.features.autoUpdate` 已在类型与默认配置中预留，接上第 5 步即可生效。
+确实需要更新能力的项目，请在自己的应用层实现（例如把版本信息放进一个业务接口，由业务侧决定怎么发版），框架不参与。
 
 ## 9. 优化轮次实施记录（2026-11-07）
 
@@ -286,7 +285,24 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 
 ### 尚未处理（下一轮候选）
 
-- `features.analytics` / `features.autoUpdate` 仍无消费方
+- `features.analytics` 仍无消费方（autoUpdate 已在第 13 节移除）
 - 打包产物尚未接代码签名与多平台发布
 - 渲染端日志上报暂未做持久化队列，网络/通道异常时会静默丢弃（可接受）
 - 菜单文案依赖系统语言，尚未跟随应用内 `language` 配置
+
+## 13. 决策记录：自动更新明确不做（2026-11-07）
+
+维护者确认：**框架不做自动更新**。这不是待办事项，而是非目标。
+
+因此本轮做了三件事：
+
+1. **移除 `features.autoUpdate`**：类型、默认值、schema、配置面板、中英文案一起删掉。保留一个永远不生效的开关，只会让使用者误以为框架支持自动更新
+2. **文档改为明确表述**：README 的打包章节与定位、路线图原有的「接口预留 + 接入步骤」全部改写成「明确不做」，不再给出接入指引
+3. **打包配置保持关闭**：`publish: null` 与 `nsis.differentialPackage: false` 不变，产物不含 `latest.yml` / `.blockmap`
+
+需要更新能力的项目请在自己的应用层实现，框架不参与版本检查、下载与安装。
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test`（104 个用例）/ `build` / `smoke` 全绿
+- 旧配置里的 `features.autoUpdate` 会在加载时按未知键裁剪（首次裁剪有 `.bak` 备份），不再进入运行时

@@ -46,6 +46,10 @@
 - **Windows 通知**：补 `AppUserModelId`
 - **启动体验**：`show: false` + `ready-to-show`，消除白屏闪烁；`did-fail-load` 兜底显示
 
+### Removed
+
+- **`features.autoUpdate`**：自动更新是明确的非目标，保留这个永远不生效的开关会误导使用者；类型、默认值、schema、配置面板与中英文案一并移除。旧配置里的该字段会按未知键裁剪（有 `.bak` 备份），打包配置保持 `publish: null`
+
 ### Security
 
 - **移除 `file:read` / `file:write`**：这两个通道能写进 `userData/modules`，而该目录会在下次启动时被执行，等于给渲染进程留下「写插件 → 重启生效」的持久化提权链。框架不再提供通用文件读写通道

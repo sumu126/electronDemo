@@ -2,7 +2,7 @@
 
 一个用于**快速搭建桌面应用**的脚手架：克隆后即可开发，不需要先补基础设施。框架提供主进程 / 预加载 / 渲染进程分层、类型安全 IPC、配置与窗口状态、路由、模块系统、日志、质量门禁和安全默认值；业务本身由使用方在其上叠加。
 
-> 定位：快速开发框架，不是完整业务应用。框架不绑定自动更新、发布渠道或具体 UI 组件库。
+> 定位：快速开发框架，不是完整业务应用。框架**不做自动更新**（明确的非目标），也不绑定发布渠道或具体 UI 组件库。
 
 ## 核心特性
 
@@ -226,7 +226,7 @@ npm run electron:build-win   # Windows 安装包：dist-app
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`
 - 打包配置位于 `package.json` 的 `build` 字段
-- 默认关闭自动更新：`publish: null` 且 `nsis.differentialPackage: false`，产物不含 `latest.yml` 与 `.blockmap`；接入方式见[路线图](docs/framework-roadmap.md#自动更新当前不做接口预留)
+- **不做自动更新**（明确的非目标）：`publish: null` 且 `nsis.differentialPackage: false`，产物不含 `latest.yml` 与 `.blockmap`；也不提供更新源与安装引导，详见[路线图](docs/framework-roadmap.md#自动更新明确不做)
 
 ## 安全默认
 
