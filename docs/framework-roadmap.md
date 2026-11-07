@@ -372,3 +372,28 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 - 本地 `npm run e2e` 一次通过（配置保存、主题应用、语言切换全链路）
 - `typecheck` / `lint` / `format:check` / `test`（105 用例）/ `build` / `smoke` / `e2e` 全绿
 - README 增加「环境要求与支持平台」矩阵，并说明 macOS 不在发布目标内
+
+## 17. Linux 打包能力补齐（2026-11-07）
+
+确认「只在 Windows 与 Linux 发布」之后，回头检查打包配置，发现两处硬伤：
+
+1. **`build` 里只有 `win` 段**：`electron-builder` 没有 Linux 目标配置，也没有对应脚本，
+   Linux 包只能靠临时命令行拼参数
+2. **`assets/icon.png` 其实是 ICO**：与 `icon.ico` 字节完全相同（头 `00 00 01 00`），
+   只是改了扩展名。Windows 用 `.ico` 所以没暴露；Linux 打包要求真正的 PNG，且建议 ≥512×512
+
+### 改动
+
+- `build.linux` 增加 `AppImage` + `deb` 目标、`category`、`maintainer`、`synopsis`，图标指向 `assets/icon.png`
+- 新增 `npm run electron:build-linux`
+- 用 Pillow 把 ICO 里的 256×256 图像重采样成 **512×512 真 PNG**（头 `89 50 4E 47`），
+  替换掉那个伪装成 PNG 的 ICO；README 注明正式发布前建议换成设计稿导出的 512/1024 PNG
+- README 打包章节补平台差异表：Windows 用 NSIS + `.ico`；Linux 用 AppImage/deb + PNG，
+  且 **Linux 包必须在 Linux 上打**（依赖 `dpkg` / `fpm`）
+
+### 验证结果
+
+- `assets/icon.png` 头字节确认为 PNG，尺寸 512×512
+- `electron-builder` 解析 `package.json` 配置通过（本机因网络超时卡在下载 Electron 二进制，
+  未跑完整打包；Linux 产物的最终验证需在 Linux 或 CI 上做）
+- 其余门禁：`typecheck` / `lint` / `format:check` / `test` / `build` / `smoke` / `e2e` 全绿

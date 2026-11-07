@@ -244,13 +244,23 @@ CI 额外做三件事：
 ## 打包
 
 ```bash
-npm run electron:build       # 解包产物：dist-app/win-unpacked
-npm run electron:build-win   # Windows 安装包：dist-app
+npm run electron:build         # 当前平台解包产物：dist-app/<platform>-unpacked
+npm run electron:build-win     # Windows 安装包（NSIS）
+npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux 上执行
 ```
+
+平台差异：
+
+| 平台    | 产物           | 说明                                                                                                           |
+| ------- | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Windows | NSIS 安装包    | 用 `assets/icon.ico`；可在 Windows 上直接打                                                                    |
+| Linux   | AppImage + deb | 用 `assets/icon.png`（512×512 PNG）；**必须在 Linux 上打**，AppImage/deb 依赖 Linux 工具链（`dpkg`、`fpm` 等） |
 
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`
-- 打包配置位于 `package.json` 的 `build` 字段
+- 打包配置位于 `package.json` 的 `build` 字段（`win` / `linux` 两段）
+- Linux 的 `deb` 需要维护者信息，配置里用 `build.linux.maintainer`；换成你自己的团队即可
+- 图标要求：Windows 用 `.ico`，Linux 用**真正的 PNG**（≥512×512）。`assets/icon.png` 目前是从 256×256 的 ICO 放大而来，正式发布前建议换成设计稿导出的 512/1024 PNG
 - **不做自动更新**（明确的非目标）：`publish: null` 且 `nsis.differentialPackage: false`，产物不含 `latest.yml` 与 `.blockmap`；也不提供更新源与安装引导，详见[路线图](docs/framework-roadmap.md#自动更新明确不做)
 - **不做代码签名**（明确的非目标）：框架不提供证书配置、签名脚本与公证流程。签名、分发、SmartScreen / Gatekeeper 处理都归使用方，按各自证书与发布渠道处理；证书文件不要提交到仓库（`.gitignore` 已忽略 `*.pfx` / `*.p12`）
 

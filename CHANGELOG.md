@@ -15,6 +15,7 @@
 - **真实交互 e2e**：`scripts/e2e.mjs` / `npm run e2e`，通过渲染进程远程调试端口驱动界面，覆盖「打开配置 → 改主题 → 保存 → 切语言 → 校验落盘与主题生效」；CI 双平台各跑一次
 - **CI 双平台**：ubuntu（xvfb）+ windows 矩阵，CI 中执行冒烟与 e2e
 - **支持平台收口**：官方支持 Windows 10+ 与 Linux，macOS 明确不发布、不验证
+- **Linux 打包**：`build.linux` 增加 AppImage + deb 目标（`category` / `maintainer` / `synopsis`）与 `npm run electron:build-linux`；Linux 包需在 Linux 上构建
 - **组件测试**：jsdom + `@vue/test-utils`，覆盖 Modal、ConfigPanel、AppErrorBoundary、theme、i18n
 - **覆盖率基线**：接入 `@vitest/coverage-v8` 并设阈值防倒退
 - **提交钩子**：`prepare` 自动安装 pre-commit 钩子，跑五项门禁；`SKIP_GATES=1` 可跳过
@@ -48,6 +49,7 @@
 - **Windows 通知**：补 `AppUserModelId`
 - **启动体验**：`show: false` + `ready-to-show`，消除白屏闪烁；`did-fail-load` 兜底显示
 - **配置保存报 `An object could not be cloned.`**：Vue 的 ref/reactive 是 Proxy，无法被 IPC 的结构化克隆复制。配置更新与日志上报现在先在渲染进程转成纯数据再 `invoke`；失败提示也从原始英文异常改成可读文案并写入日志
+- **`assets/icon.png` 是改了扩展名的 ICO**：与 `icon.ico` 字节完全相同，Windows 不受影响，但 Linux 打包要求真 PNG。已重采样为 512×512 真 PNG（正式发布建议换成设计稿导出的 512/1024 版本）
 
 ### Removed
 
