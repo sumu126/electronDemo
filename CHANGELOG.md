@@ -12,7 +12,9 @@
 - **404 兜底**：新增 `NotFoundView` 与 catch-all 路由
 - **主进程热重启**：`electron:dev` 改为 `scripts/dev.mjs`，监听 `src/main`、`src/preload`、`src/shared`，改动后自动重建并重启 Electron
 - **真机冒烟**：`scripts/smoke.mjs` / `npm run smoke`，用临时 userData 启动真实 Electron，校验配置与日志落盘
-- **CI 双平台**：ubuntu（xvfb）+ windows 矩阵，CI 中执行冒烟
+- **真实交互 e2e**：`scripts/e2e.mjs` / `npm run e2e`，通过渲染进程远程调试端口驱动界面，覆盖「打开配置 → 改主题 → 保存 → 切语言 → 校验落盘与主题生效」；CI 双平台各跑一次
+- **CI 双平台**：ubuntu（xvfb）+ windows 矩阵，CI 中执行冒烟与 e2e
+- **支持平台收口**：官方支持 Windows 10+ 与 Linux，macOS 明确不发布、不验证
 - **组件测试**：jsdom + `@vue/test-utils`，覆盖 Modal、ConfigPanel、AppErrorBoundary、theme、i18n
 - **覆盖率基线**：接入 `@vitest/coverage-v8` 并设阈值防倒退
 - **提交钩子**：`prepare` 自动安装 pre-commit 钩子，跑五项门禁；`SKIP_GATES=1` 可跳过

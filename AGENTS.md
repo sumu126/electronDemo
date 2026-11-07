@@ -22,7 +22,14 @@ npm run build
 
 `prepare` 脚本会自动安装 pre-commit 钩子，提交时跑同一套门禁；确实需要跳过时用 `SKIP_GATES=1 git commit ...`。
 
-CI 额外在 ubuntu（xvfb）与 windows 上各跑一次 `npm run smoke`（启动真实 Electron 校验配置与日志）；改到主进程启动链路时，本地也建议跑一遍 `npm run smoke`。
+CI 额外在 ubuntu（xvfb）与 windows 上各跑一次 `npm run smoke`（启动真实 Electron 校验配置与日志）与 `npm run e2e`（驱动界面走真实 IPC 链路）。
+
+- 改到主进程启动链路时，本地也跑一遍 `npm run smoke`
+- 改到渲染端交互、IPC 契约或跨进程传参时，**必须**在本地跑一遍 `npm run e2e`：单测会把 `invoke` mock 掉，序列化/白名单这类问题只有真实链路能暴露
+
+## 发布范围
+
+官方只发布 **Windows 10+ 与 Linux**。macOS 不发布、不验证，相关分支（`appMenu` 等）属 best-effort，不要以此为理由引入新依赖。
 
 ## 其他约定
 

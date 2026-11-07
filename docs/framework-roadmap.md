@@ -340,3 +340,35 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 - 全仓 `grep analytics` 无残留（除路线图历史记录）
 - `FeatureFlags` 现在只剩 `developerTools` 一个真实开关
 - `typecheck` / `lint` / `format:check` / `test` / `build` / `smoke` 全绿
+
+## 16. 支持平台收口与真实交互 e2e（2026-11-07）
+
+维护者确认：**只在 Windows 与 Linux 发布**。因此 macOS 不再作为验证目标，同时补上第五轮评审里
+指出的唯一硬缺口——单元测试与启动冒烟之间缺少「真实交互」这一层。
+
+### 平台支持矩阵
+
+- **Windows 10+**：官方支持。托盘、气泡通知、AppUserModelId、NSIS 安装包均实测
+- **Linux（现代桌面）**：官方支持。CI 通过 xvfb 实测启动与 e2e；无状态栏环境下托盘建不起来时会允许直接关窗
+- **macOS**：不发布、不验证。代码保留 `appMenu` 等分支，属 best-effort，README 已标明
+
+### 真实交互 e2e
+
+新增 `scripts/e2e.mjs` / `npm run e2e`，通过渲染进程的远程调试端口（CDP）驱动界面：
+
+1. 等待应用挂载，确认没有落进错误边界
+2. 点开配置面板
+3. 改主题为 dark → 点保存 → 轮询 `config.json` 确认落盘 → 确认面板无错误提示
+4. 切换语言为 en-US → 保存 → 确认落盘、界面文案变成英文
+5. 确认 `<html data-theme="dark">` 真的生效
+
+CI 在 ubuntu（xvfb）与 windows 各跑一次。
+
+**为什么必须有它**：上一轮那个 `An object could not be cloned.` 是 Vue Proxy 与 IPC 结构化克隆冲突，
+被我 mock 掉 `invoke` 的 100 多条单测全部放过了——只有真实链路能发现。
+
+### 验证结果
+
+- 本地 `npm run e2e` 一次通过（配置保存、主题应用、语言切换全链路）
+- `typecheck` / `lint` / `format:check` / `test`（105 用例）/ `build` / `smoke` / `e2e` 全绿
+- README 增加「环境要求与支持平台」矩阵，并说明 macOS 不在发布目标内

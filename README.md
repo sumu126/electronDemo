@@ -29,11 +29,18 @@
 | 状态 / 路由 | Pinia 4 + Vue Router 4          |
 | 测试 / 规范 | Vitest 5 + ESLint 10 + Prettier |
 
-## 环境要求
+## 环境要求与支持平台
 
 - Node.js **>= 22.12**（Vite 8 要求，`package.json` 的 `engines` 与 `.nvmrc` 已锁定）
 - npm >= 10
-- Windows 10+（Electron 45 已不支持 Windows 7/8/8.1；macOS/Linux 需自行验证）
+
+| 平台              | 状态        | 说明                                                                              |
+| ----------------- | ----------- | --------------------------------------------------------------------------------- |
+| Windows 10+       | ✅ 官方支持 | 托盘、通知、AppUserModelId、NSIS 安装包均实测；Electron 45 起不支持 Win7/8/8.1    |
+| Linux（现代桌面） | ✅ 官方支持 | 通过 CI（xvfb）实测启动与 e2e；无状态栏的桌面环境下托盘不可用时会自动允许直接关窗 |
+| macOS             | ⚠️ 未验证   | 代码保留了 `appMenu` 等分支，但没有实机验证，不作为发布目标                       |
+
+CI 在 ubuntu 与 windows 两个平台各跑一遍：单元测试、构建、启动冒烟、真实交互 e2e。
 
 ## 快速开始
 
@@ -62,9 +69,12 @@ npm run format:check     # Prettier 校验（不写文件）
 npm test                 # Vitest
 npm run test:coverage    # Vitest + 覆盖率阈值
 npm run smoke            # 真机冒烟：启动 Electron 校验配置与日志落盘
+npm run e2e              # 真实交互 e2e：驱动界面改配置、切语言，校验整条 IPC 链路
 ```
 
 `npm install` 会通过 `prepare` 自动安装 pre-commit 钩子，提交时依次跑 typecheck / lint / format:check / test / build；确实要跳过时用 `SKIP_GATES=1 git commit ...`。
+
+> `smoke` 与 `e2e` 会真的启动 Electron 窗口，本地跑完会自动关闭；`e2e` 通过渲染进程的远程调试端口驱动界面，所以 CLI 环境（CI / 无桌面）需要 `xvfb-run`。
 
 ## 目录结构
 
@@ -225,10 +235,11 @@ npm test
 npm run build
 ```
 
-CI 额外做两件事：
+CI 额外做三件事：
 
 - 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 46% / branches 45% / functions 42% / lines 46%）
 - 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
+- 两个平台各跑一次 `npm run e2e`：驱动界面点开配置面板、改主题、切语言，校验整条 IPC 链路（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
 
 ## 打包
 
