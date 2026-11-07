@@ -28,13 +28,6 @@ export interface TrayConfig {
   balloonNotificationEnabled: boolean;
 }
 
-// IPC通信相关类型
-export interface IpcResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
 // 系统信息类型
 export interface SystemInfo {
   platform: string;
