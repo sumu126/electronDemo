@@ -20,13 +20,13 @@ export default defineConfig({
       reporter: ['text-summary', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/renderer/env.d.ts'],
-      // 基线门禁：实测 statements 35.63% / branches 43.03% / functions 28.63% / lines 36.02%，
+      // 基线门禁：实测 statements 48.09% / branches 47.8% / functions 43.64% / lines 48.58%，
       // 取略低于基线的值防止覆盖率倒退；补测试后逐步上调
       thresholds: {
-        statements: 33,
-        branches: 40,
-        functions: 26,
-        lines: 33,
+        statements: 46,
+        branches: 45,
+        functions: 42,
+        lines: 46,
       },
     },
   },
