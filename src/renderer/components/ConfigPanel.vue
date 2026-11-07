@@ -1,21 +1,21 @@
 <template>
   <div class="config-panel">
-    <h3>应用配置</h3>
+    <h3>{{ t.config.title }}</h3>
 
     <div class="config-section">
-      <h4>外观设置</h4>
+      <h4>{{ t.config.appearance }}</h4>
       <div class="form-group">
-        <label>主题:</label>
-        <select :value="localConfig.theme" @change="handleThemeChange" class="form-control">
-          <option value="light">浅色</option>
-          <option value="dark">深色</option>
-          <option value="auto">跟随系统</option>
+        <label>{{ t.config.theme }}:</label>
+        <select :value="localConfig.theme" class="form-control" @change="handleThemeChange">
+          <option value="light">{{ t.config.themeLight }}</option>
+          <option value="dark">{{ t.config.themeDark }}</option>
+          <option value="auto">{{ t.config.themeAuto }}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>语言:</label>
-        <select :value="localConfig.language" @change="handleLanguageChange" class="form-control">
+        <label>{{ t.config.language }}:</label>
+        <select :value="localConfig.language" class="form-control" @change="handleLanguageChange">
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>
         </select>
@@ -23,7 +23,7 @@
     </div>
 
     <div class="config-section">
-      <h4>功能设置</h4>
+      <h4>{{ t.config.features }}</h4>
       <div class="form-group checkbox-group">
         <label class="checkbox-label">
           <input
@@ -33,7 +33,7 @@
               handleFeatureToggle('developerTools', ($event.target as HTMLInputElement).checked)
             "
           />
-          开发者工具
+          {{ t.config.developerTools }}
         </label>
       </div>
 
@@ -44,7 +44,7 @@
             :checked="localConfig.features.analytics"
             @change="handleFeatureToggle('analytics', ($event.target as HTMLInputElement).checked)"
           />
-          数据统计
+          {{ t.config.analytics }}
         </label>
       </div>
 
@@ -55,16 +55,16 @@
             :checked="localConfig.features.autoUpdate"
             @change="handleFeatureToggle('autoUpdate', ($event.target as HTMLInputElement).checked)"
           />
-          自动更新
+          {{ t.config.autoUpdate }}
         </label>
       </div>
     </div>
 
     <div class="config-actions">
-      <button @click="saveConfig" :disabled="loading" class="btn btn-primary">
-        {{ loading ? '保存中...' : '保存配置' }}
+      <button class="btn btn-primary" :disabled="loading" @click="saveConfig">
+        {{ loading ? t.config.saving : t.config.save }}
       </button>
-      <button @click="resetConfig" class="btn btn-secondary">重置</button>
+      <button class="btn btn-secondary" @click="resetConfig">{{ t.config.reset }}</button>
     </div>
 
     <div v-if="error" class="error-message">
@@ -76,9 +76,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useConfig } from '../composables/useConfig';
+import { useI18n } from '../composables/useI18n';
 import { AppConfig } from '@shared/types';
 
-// 使用配置composable
+const { t } = useI18n();
 const { config, loading, error, updateConfig } = useConfig();
 
 // 本地配置副本，用于编辑
@@ -135,10 +136,11 @@ const resetConfig = () => {
 
 <style scoped>
 .config-panel {
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
 }
 
 .config-section {
@@ -148,8 +150,8 @@ const resetConfig = () => {
 .config-section h4 {
   margin-top: 0;
   margin-bottom: 15px;
-  color: #333;
-  border-bottom: 1px solid #eee;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 8px;
 }
 
@@ -161,21 +163,23 @@ const resetConfig = () => {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #555;
+  color: var(--color-text-muted);
 }
 
 .form-control {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .checkbox-group {
@@ -199,7 +203,7 @@ const resetConfig = () => {
   gap: 10px;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--color-border);
 }
 
 .btn {
@@ -211,21 +215,21 @@ const resetConfig = () => {
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-primary-hover);
 }
 
 .btn-secondary {
-  background-color: #6c757d;
+  background-color: var(--color-secondary);
   color: white;
 }
 
 .btn-secondary:hover {
-  background-color: #5a6268;
+  background-color: var(--color-secondary-hover);
 }
 
 .btn:disabled {
@@ -236,9 +240,9 @@ const resetConfig = () => {
 .error-message {
   margin-top: 15px;
   padding: 10px;
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger-text);
   border-radius: 4px;
-  border: 1px solid #f5c6cb;
+  border: 1px solid var(--color-danger);
 }
 </style>

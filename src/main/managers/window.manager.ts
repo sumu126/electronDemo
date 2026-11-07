@@ -3,6 +3,7 @@ import fs from 'fs';
 import { join } from 'path';
 
 import type { WindowConfig } from '@shared/types';
+import { getMessages, type AppMessages } from '@shared/i18n';
 import { isTrustedSenderUrl, DEV_SERVER_URL } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
 import { getLogger } from '../utils/app-logger';
@@ -248,6 +249,11 @@ export class WindowManager {
     return this.mainWindow;
   }
 
+  // 托盘与通知文案跟随配置语言
+  private messages(): AppMessages {
+    return getMessages(this.configModule?.getValue<string>('language'));
+  }
+
   private setupTray(): boolean {
     // 如果托盘已存在，确保托盘可见并显示通知
     if (this.tray) {
@@ -282,10 +288,13 @@ export class WindowManager {
     const appName = this.configModule?.getValue<string>('appName') || 'Electron Vue3 Framework';
     this.tray.setToolTip(appName);
 
+    // 托盘文案跟随配置的语言
+    const messages = this.messages();
+
     // 创建托盘菜单
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: '显示窗口',
+        label: messages.tray.show,
         click: () => {
           if (this.mainWindow) {
             this.mainWindow.show();
@@ -294,7 +303,7 @@ export class WindowManager {
         },
       },
       {
-        label: '退出',
+        label: messages.tray.quit,
         click: () => {
           this.markQuitting();
           app.quit();
@@ -323,17 +332,21 @@ export class WindowManager {
   }
 
   private async checkAndShowTrayNotification(): Promise<void> {
+    const { tray: trayMessages } = this.messages();
+    const notify = () =>
+      this.showTrayNotification(trayMessages.minimizedTitle, trayMessages.minimizedBody);
+
     const balloonEnabled =
       this.configModule?.getValue<boolean>('tray.balloonNotificationEnabled') ?? false;
 
     if (balloonEnabled) {
       // 每次关闭都显示通知
-      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      notify();
       return;
     }
 
     if (!this.configModule) {
-      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      notify();
       return;
     }
 
@@ -341,12 +354,12 @@ export class WindowManager {
     try {
       const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
       if (!hasShown) {
-        this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+        notify();
         await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
       }
     } catch (error) {
       getLogger().error('Error checking tray notification status', error);
-      this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
+      notify();
     }
   }
 

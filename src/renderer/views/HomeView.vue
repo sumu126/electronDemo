@@ -3,57 +3,63 @@
     <header class="app-header">
       <h1>{{ title }}</h1>
       <div class="header-actions">
-        <button @click="fetchSystemInfo" class="btn btn-secondary" :disabled="systemInfoLoading">
-          {{ systemInfoLoading ? '加载中...' : '获取系统信息' }}
+        <button class="btn btn-secondary" :disabled="systemInfoLoading" @click="fetchSystemInfo">
+          {{ systemInfoLoading ? t.home.loading : t.home.fetchSystemInfo }}
         </button>
-        <button @click="toggleDevMode" class="btn btn-primary">
-          {{ isDeveloperMode ? '退出开发者模式' : '开发者模式' }}
+        <button class="btn btn-primary" @click="toggleDevMode">
+          {{ isDeveloperMode ? t.home.exitDeveloperMode : t.home.developerMode }}
         </button>
-        <button @click="showConfigPanel = true" class="btn btn-success">配置</button>
+        <button class="btn btn-success" @click="showConfigPanel = true">{{ t.home.config }}</button>
       </div>
     </header>
 
     <main class="app-main">
       <FrameworkInfo />
 
-      <div class="info-section" v-if="systemInfo">
-        <h2>系统信息</h2>
+      <section v-if="systemInfo" class="info-section">
+        <h2>{{ t.home.systemInfo }}</h2>
         <pre>{{ JSON.stringify(systemInfo, null, 2) }}</pre>
-      </div>
+      </section>
 
-      <div class="info-section" v-if="isDeveloperMode">
-        <h2>开发者工具</h2>
-        <p>当前应用运行在开发者模式下</p>
-        <button @click="pingBackend" class="btn btn-info">测试后端通信</button>
-        <p v-if="pingResult">{{ pingResult }}</p>
-      </div>
+      <section v-if="isDeveloperMode" class="info-section">
+        <h2>{{ t.home.developerTools }}</h2>
+        <p>{{ t.home.developerModeHint }}</p>
+        <button class="btn btn-info" @click="pingBackend">{{ t.home.testBackend }}</button>
+        <p v-if="pingResult">{{ t.home.pingResult }}: {{ pingResult }}</p>
+      </section>
     </main>
 
     <!-- 配置面板 -->
-    <Modal v-model:visible="showConfigPanel" title="应用配置" :centered="true" width="600px">
+    <Modal v-model:visible="showConfigPanel" :title="t.config.title" :centered="true" width="600px">
       <ConfigPanel />
     </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useSystemInfo } from '../composables';
+import { useI18n } from '../composables/useI18n';
 import { useAppStore } from '../stores/app.store';
 import { useConfigStore } from '../stores/config.store';
 import FrameworkInfo from '../components/FrameworkInfo.vue';
 import Modal from '../components/Modal.vue';
 import ConfigPanel from '../components/ConfigPanel.vue';
 
-const title = ref('Electron + Vue3 应用框架'); // 默认标题
-
-// 使用composables
+const { t } = useI18n();
 const { systemInfo, loading: systemInfoLoading, fetchSystemInfo } = useSystemInfo();
-
-// 使用store
 const appStore = useAppStore();
 const configStore = useConfigStore();
+
 const isDeveloperMode = computed(() => appStore.isDeveloperMode);
+const showConfigPanel = ref(false);
+const pingResult = ref<string | null>(null);
+
+const title = computed(() =>
+  configStore.config.appName
+    ? `${configStore.config.appName} ${t.value.app.titleSuffix}`
+    : t.value.app.defaultTitle,
+);
 
 const toggleDevMode = () => {
   appStore.toggleDeveloperMode();
@@ -62,24 +68,14 @@ const toggleDevMode = () => {
 const pingBackend = async () => {
   try {
     pingResult.value = await window.electronAPI.invoke('ping');
-    console.log('Ping result:', pingResult.value);
   } catch (error) {
     console.error('Ping failed:', error);
   }
 };
 
-// 配置面板显示控制
-const showConfigPanel = ref(false);
-
-// 保存 ping 结果并在开发者工具区域展示
-const pingResult = ref<string | null>(null);
-
-// 在组件挂载时获取应用配置
+// 配置决定标题与文案，挂载时确保已从主进程加载
 onMounted(async () => {
   await configStore.ensureLoaded();
-  if (configStore.config.appName) {
-    title.value = configStore.config.appName;
-  }
 });
 </script>
 
@@ -88,7 +84,8 @@ onMounted(async () => {
   font-family: Arial, sans-serif;
   padding: 20px;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 .app-header {
@@ -97,7 +94,7 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 30px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .header-actions {
@@ -114,39 +111,39 @@ onMounted(async () => {
 }
 
 .btn-secondary {
-  background-color: #6c757d;
+  background-color: var(--color-secondary);
   color: white;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: var(--color-secondary-hover);
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-primary-hover);
 }
 
 .btn-success {
-  background-color: #28a745;
+  background-color: var(--color-success);
   color: white;
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: #218838;
+  background-color: var(--color-success-hover);
 }
 
 .btn-info {
-  background-color: #17a2b8;
+  background-color: var(--color-info);
   color: white;
 }
 
 .btn-info:hover:not(:disabled) {
-  background-color: #117a8b;
+  background-color: var(--color-info-hover);
 }
 
 .btn:disabled {
@@ -161,19 +158,20 @@ onMounted(async () => {
 }
 
 .info-section {
-  background: white;
+  background: var(--color-surface);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
 }
 
 .info-section h2 {
   margin-top: 0;
-  color: #333;
+  color: var(--color-text);
 }
 
 pre {
-  background: #f8f9fa;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
   padding: 15px;
   border-radius: 4px;
   overflow-x: auto;

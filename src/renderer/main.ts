@@ -1,8 +1,10 @@
-import { createApp } from 'vue';
+import { createApp, watch } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import { router } from './router';
 import { useConfigStore } from './stores/config.store';
+import { applyTheme, watchSystemTheme } from './theme';
+import './styles/theme.css';
 
 // 创建应用实例
 const app = createApp(App);
@@ -22,8 +24,16 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('[renderer] Unhandled promise rejection:', event.reason);
 });
 
-// 窗口标题以配置中的 appName 为准（构建脚本不再改写 index.html）
+// 配置驱动的外观与标题：theme 决定 <html data-theme>，appName 决定窗口标题
 const configStore = useConfigStore();
+
+watch(
+  () => configStore.config.theme,
+  (theme) => applyTheme(theme),
+  { immediate: true },
+);
+watchSystemTheme(() => configStore.config.theme);
+
 void configStore.ensureLoaded().finally(() => {
   if (configStore.config.appName) {
     document.title = configStore.config.appName;

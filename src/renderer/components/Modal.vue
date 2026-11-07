@@ -8,7 +8,7 @@
         :style="width ? { width } : undefined"
         role="dialog"
         aria-modal="true"
-        :aria-label="title || '对话框'"
+        :aria-label="title || t.modal.dialog"
         tabindex="-1"
         @click.stop
       >
@@ -20,7 +20,7 @@
             v-if="closable"
             class="modal-close-btn"
             type="button"
-            aria-label="关闭"
+            :aria-label="t.modal.close"
             @click="closeModal"
           >
             &times;
@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { useI18n } from '../composables/useI18n';
 
 interface Props {
   visible: boolean;
@@ -61,6 +62,8 @@ const emit = defineEmits<{
   'update:visible': [value: boolean];
   close: [];
 }>();
+
+const { t } = useI18n();
 
 const containerRef = ref<HTMLElement | null>(null);
 // 关闭后把焦点还给打开弹窗的元素，避免键盘用户丢失位置
@@ -160,16 +163,17 @@ onBeforeUnmount(release);
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay);
   display: flex;
   z-index: 1000;
   animation: fadeIn 0.3s ease;
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-card);
   max-width: 90vw;
   max-height: 90vh;
   display: flex;
@@ -183,7 +187,7 @@ onBeforeUnmount(release);
 
 .modal-header {
   padding: 16px 24px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -192,7 +196,7 @@ onBeforeUnmount(release);
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #333;
+  color: var(--color-text);
 }
 
 .modal-close-btn {
@@ -200,7 +204,7 @@ onBeforeUnmount(release);
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #999;
+  color: var(--color-text-muted);
   padding: 0;
   width: 30px;
   height: 30px;
@@ -210,8 +214,8 @@ onBeforeUnmount(release);
 }
 
 .modal-close-btn:hover {
-  color: #333;
-  background-color: #f5f5f5;
+  color: var(--color-text);
+  background-color: var(--color-surface-muted);
   border-radius: 50%;
 }
 
@@ -223,7 +227,7 @@ onBeforeUnmount(release);
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 12px;

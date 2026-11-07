@@ -1,0 +1,72 @@
+/**
+ * 主题令牌：所有组件的颜色都从这里取，切换主题只改 <html data-theme>，
+ * 不需要给每个组件写一套 dark 样式。
+ */
+:root {
+  color-scheme: light;
+
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8f9fa;
+  --color-border: #dddddd;
+  --color-text: #222222;
+  --color-text-muted: #666666;
+
+  --color-primary: #007bff;
+  --color-primary-hover: #0056b3;
+  --color-secondary: #6c757d;
+  --color-secondary-hover: #5a6268;
+  --color-success: #28a745;
+  --color-success-hover: #218838;
+  --color-info: #17a2b8;
+  --color-info-hover: #117a8b;
+  --color-danger: #dc3545;
+  --color-danger-soft: #f8d7da;
+  --color-danger-text: #721c24;
+
+  --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --overlay: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #16181d;
+  --color-surface: #1f2229;
+  --color-surface-muted: #262a33;
+  --color-border: #363b45;
+  --color-text: #e6e8ec;
+  --color-text-muted: #9aa1ad;
+
+  --color-primary: #4c9aff;
+  --color-primary-hover: #74b3ff;
+  --color-secondary: #4a515c;
+  --color-secondary-hover: #5b636f;
+  --color-success: #3fb950;
+  --color-success-hover: #56d364;
+  --color-info: #39c5cf;
+  --color-info-hover: #5ed6de;
+  --color-danger: #f85149;
+  --color-danger-soft: #3d1d1f;
+  --color-danger-text: #ffb3ae;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --overlay: rgba(0, 0, 0, 0.65);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+a {
+  color: var(--color-primary);
+}

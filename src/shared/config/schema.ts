@@ -1,4 +1,5 @@
 import type { AppConfig } from '../types';
+import { SUPPORTED_LOCALES } from '../i18n';
 
 /**
  * 配置 schema：既是校验白名单，也是唯一的结构描述。
@@ -23,7 +24,7 @@ const CONFIG_SCHEMA: SchemaObject = {
   appName: 'string',
   version: 'string',
   theme: ['light', 'dark', 'auto'] as const,
-  language: 'string',
+  language: SUPPORTED_LOCALES,
   window: {
     width: 'number',
     height: 'number',

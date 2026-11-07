@@ -12,51 +12,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useI18n } from '../composables/useI18n';
 import { useConfigStore } from '../stores/config.store';
-
-interface Feature {
-  title: string;
-  description: string;
-}
+import type { FrameworkFeature } from '@shared/i18n';
 
 interface Props {
   title?: string;
   description?: string;
-  features?: Feature[];
+  features?: FrameworkFeature[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: '',
-  description: '一个现代化的桌面应用程序框架',
-  features: () => [
-    { title: '模块化架构', description: '清晰的分层架构，便于维护和扩展' },
-    { title: 'TypeScript 支持', description: '完整的类型安全，提升开发体验' },
-    { title: '状态管理', description: '使用 Pinia 进行高效的状态管理' },
-    { title: '跨进程通信', description: '安全高效的主进程与渲染进程通信' },
-  ],
+  description: '',
+  features: () => [],
 });
 
-// 如果没有传入标题，则从配置中获取
-const componentTitle = ref(props.title || '');
+const { t } = useI18n();
 const configStore = useConfigStore();
 
-onMounted(async () => {
-  if (!props.title) {
-    await configStore.ensureLoaded();
-    componentTitle.value = configStore.config.appName
-      ? `${configStore.config.appName} 框架`
-      : 'Electron + Vue3 框架';
+// 传入的 props 优先，否则取配置与当前语言的默认文案
+const componentTitle = computed(() => {
+  if (props.title) {
+    return props.title;
   }
+
+  return configStore.config.appName
+    ? `${configStore.config.appName} ${t.value.app.titleSuffix}`
+    : t.value.app.defaultTitle;
+});
+
+const description = computed(() => props.description || t.value.framework.description);
+
+const features = computed<readonly FrameworkFeature[]>(() =>
+  props.features.length > 0 ? props.features : t.value.framework.features,
+);
+
+onMounted(async () => {
+  await configStore.ensureLoaded();
 });
 </script>
 
 <style scoped>
 .framework-info-card {
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
   margin-bottom: 20px;
 }
 
@@ -68,20 +72,20 @@ onMounted(async () => {
 }
 
 .feature-item {
-  background: #f8f9fa;
+  background: var(--color-surface-muted);
   padding: 15px;
   border-radius: 6px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid var(--color-primary);
 }
 
 .feature-item h4 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: var(--color-text);
 }
 
 .feature-item p {
   margin: 0;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 14px;
 }
 </style>
