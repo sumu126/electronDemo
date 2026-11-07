@@ -1,5 +1,6 @@
 import type { ModuleInfo } from '@shared/types';
 import type { Module } from './module.types';
+import { getLogger } from '../utils/app-logger';
 
 /**
  * 模块注册表：负责生命周期、失败隔离与卸载。
@@ -10,17 +11,17 @@ export class ModuleRegistry {
 
   public async register(module: Module, options: { required?: boolean } = {}): Promise<boolean> {
     if (this.modules.has(module.name)) {
-      console.warn(`Module ${module.name} already registered, skipped`);
+      getLogger().warn(`Module ${module.name} already registered, skipped`);
       return false;
     }
 
     try {
       await module.init();
       this.modules.set(module.name, module);
-      console.log(`Module ${module.name} registered successfully`);
+      getLogger().info(`Module ${module.name} registered successfully`);
       return true;
     } catch (error) {
-      console.error(`Failed to register module ${module.name}:`, error);
+      getLogger().error(`Failed to register module ${module.name}`, error);
       // 核心模块失败需要中断启动，用户模块失败只隔离自身
       if (options.required) {
         throw error;
@@ -42,7 +43,7 @@ export class ModuleRegistry {
       try {
         await module.destroy();
       } catch (error) {
-        console.error(`Failed to destroy module ${name}:`, error);
+        getLogger().error(`Failed to destroy module ${name}`, error);
       }
     }
 
@@ -70,9 +71,9 @@ export class ModuleRegistry {
 
       try {
         await module.destroy();
-        console.log(`Module ${name} destroyed successfully`);
+        getLogger().info(`Module ${name} destroyed successfully`);
       } catch (error) {
-        console.error(`Failed to destroy module ${name}:`, error);
+        getLogger().error(`Failed to destroy module ${name}`, error);
       }
     }
 

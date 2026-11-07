@@ -5,6 +5,7 @@ import { join } from 'path';
 import type { WindowConfig } from '@shared/types';
 import { isTrustedSenderUrl, DEV_SERVER_URL } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
+import { getLogger } from '../utils/app-logger';
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
 export class WindowManager {
@@ -183,7 +184,7 @@ export class WindowManager {
           maximized: window.isMaximized(),
         },
       })
-      .catch((error) => console.error('Failed to save window state:', error));
+      .catch((error) => getLogger().error('Failed to save window state', error));
   }
 
   public createWindow(
@@ -272,7 +273,7 @@ export class WindowManager {
       this.tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
     } catch (error) {
       // 托盘建不起来（部分 Linux 桌面无状态栏）时返回 false，调用方据此允许关窗
-      console.error('Failed to create tray:', error);
+      getLogger().error('Failed to create tray', error);
       this.tray = null;
       return false;
     }
@@ -344,7 +345,7 @@ export class WindowManager {
         await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
       }
     } catch (error) {
-      console.error('Error checking tray notification status:', error);
+      getLogger().error('Error checking tray notification status', error);
       this.showTrayNotification('应用已最小化到托盘', '点击托盘图标可恢复窗口');
     }
   }

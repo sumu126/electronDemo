@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { Module } from './module.types';
 import type { ModuleRegistry } from './module-registry';
+import { getLogger } from '../utils/app-logger';
 
 // 用户模块约定：CommonJS 文件，导出一个模块对象或返回模块对象的工厂函数
 const MODULE_EXTENSIONS = ['.cjs', '.js'];
@@ -54,7 +55,7 @@ export async function loadModulesFromDirectory(
       const module = resolveModuleExport(requireModule(filePath));
 
       if (!module) {
-        console.warn(`Skip invalid module: ${filePath}`);
+        getLogger().warn(`Skip invalid module: ${filePath}`);
         continue;
       }
 
@@ -62,7 +63,7 @@ export async function loadModulesFromDirectory(
         loaded.push(module.name);
       }
     } catch (error) {
-      console.error(`Failed to load module ${filePath}:`, error);
+      getLogger().error(`Failed to load module ${filePath}`, error);
     }
   }
 

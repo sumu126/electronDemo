@@ -6,6 +6,7 @@ import { IPC_CHANNELS } from '@shared/constants';
 import { isTrustedSenderUrl } from '../ipc/sender';
 import { ModuleManager } from '../managers/module.manager';
 import { ConfigModule } from '../modules/config.module';
+import { getLogger } from '../utils/app-logger';
 import type { IpcChannel } from '@shared/types';
 
 export interface IpcHandler {
@@ -95,7 +96,7 @@ export class IpcManager {
 
   private registerConfigHandlers(): void {
     if (!this.configHandler) {
-      console.error('ConfigHandler not initialized');
+      getLogger().error('ConfigHandler not initialized');
       return;
     }
 

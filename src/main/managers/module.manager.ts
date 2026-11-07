@@ -4,6 +4,7 @@ import { join } from 'path';
 import { ConfigModule } from '../modules/config.module';
 import { loadModulesFromDirectory } from './module-loader';
 import { ModuleRegistry } from './module-registry';
+import { getLogger } from '../utils/app-logger';
 import type { Module } from './module.types';
 import type { ModuleInfo } from '@shared/types';
 
@@ -18,7 +19,7 @@ export class ModuleManager {
   }
 
   private async loadCoreModules(): Promise<void> {
-    console.log('Loading core modules...');
+    getLogger().info('Loading core modules...');
 
     // 核心模块失败需要中断启动
     await this.registry.register(new ConfigModule(), { required: true });
@@ -29,7 +30,7 @@ export class ModuleManager {
     const requireModule = createRequire(__filename);
     const loaded = await loadModulesFromDirectory(modulesDir, this.registry, requireModule);
 
-    console.log(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
+    getLogger().info(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
   }
 
   public registerModule(module: Module, options?: { required?: boolean }): Promise<boolean> {

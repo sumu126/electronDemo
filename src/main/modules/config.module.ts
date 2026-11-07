@@ -11,6 +11,7 @@ import {
 } from '@shared/config/schema';
 import { AppConfig } from '@shared/types';
 import { APP_CONSTANTS } from '@shared/constants';
+import { getLogger } from '../utils/app-logger';
 
 export class ConfigModule {
   public readonly name = 'ConfigModule';
@@ -58,7 +59,7 @@ export class ConfigModule {
 
         if (unknownKeys.length > 0) {
           await this.backupConfigFile();
-          console.warn(
+          getLogger().warn(
             `Dropping unknown config keys (backup: ${this.configPath}.bak): ${unknownKeys.join(', ')}`,
           );
         }
@@ -68,11 +69,11 @@ export class ConfigModule {
         await this.saveConfig();
       } catch (error) {
         // 如果配置文件不存在或解析失败，则使用默认配置
-        console.warn('Failed to load config, using defaults:', error);
+        getLogger().warn('Failed to load config, using defaults', error);
         await this.saveConfig();
       }
     } catch (error) {
-      console.error('Error loading config:', error);
+      getLogger().error('Error loading config', error);
       // 出错时也使用默认配置
       this.config = this.getDefaultConfig();
     }
@@ -109,7 +110,7 @@ export class ConfigModule {
       await fs.writeFile(tempPath, snapshot, 'utf-8');
       await fs.rename(tempPath, this.configPath);
     } catch (error) {
-      console.error('Error saving config:', error);
+      getLogger().error('Error saving config', error);
       throw error;
     }
   }

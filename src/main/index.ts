@@ -5,6 +5,7 @@ import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
 import { ConfigModule } from './modules/config.module';
 import { Logger } from './utils/logger';
+import { initLogger, getLogger } from './utils/app-logger';
 import { APP_CONSTANTS } from '@shared/constants';
 
 // 退出时等待模块清理的最长时间，避免 destroy 卡住导致进程无法退出
@@ -18,7 +19,8 @@ class App {
   private isQuitting = false;
 
   constructor() {
-    this.logger = new Logger(join(app.getPath('userData'), 'logs', 'main.log'));
+    // 初始化全局日志入口：此后各模块都用 getLogger() 记录，无需层层注入
+    this.logger = initLogger(join(app.getPath('userData'), 'logs', 'main.log'));
     this.windowManager = new WindowManager();
     this.moduleManager = new ModuleManager();
     // 延迟初始化IPC管理器直到模块被加载
@@ -113,7 +115,7 @@ class App {
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log('Another instance of the app is already running. Quitting this instance.');
+  getLogger().info('Another instance of the app is already running. Quitting this instance.');
   app.quit();
 } else {
   // 创建App实例
