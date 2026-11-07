@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "node scripts/install-hooks.mjs",
-    "electron:dev": "npm run build && concurrently -k -n \"VITE,ELECTRON\" \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "node scripts/dev.mjs",
     "electron:build": "npm run build && electron-builder --dir --publish never",
     "electron:build-win": "npm run build && electron-builder --win --config --publish never",
     "electron:start": "electron ."
@@ -72,7 +72,6 @@
     "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "^5.1.0",
     "@vue/test-utils": "^2.5.1",
-    "concurrently": "^10.0.6",
     "electron": "^45.2.3",
     "electron-builder": "^26.18.0",
     "eslint": "^10.14.0",
@@ -84,8 +83,7 @@
     "vite": "^8.3.6",
     "vitest": "^5.1.0",
     "vue-eslint-parser": "^10.4.1",
-    "vue-tsc": "^3.3.14",
-    "wait-on": "^9.5.1"
+    "vue-tsc": "^3.3.14"
   },
   "dependencies": {
     "pinia": "^4.1.0",
