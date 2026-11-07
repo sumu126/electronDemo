@@ -31,6 +31,20 @@ const rendererConfig = defineConfig({
     port: 5173,
     strictPort: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // 框架层依赖单独成块：业务代码改动时这几块的 hash 不变，便于命中缓存
+        // Vite 8（rolldown）要求 manualChunks 为函数形式
+        manualChunks: (id: string) => {
+          if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id)) {
+            return 'vendor';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 });
 
 // 主进程配置
