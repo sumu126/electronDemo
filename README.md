@@ -18,12 +18,12 @@
 
 ## 技术栈
 
-| 类别 | 选型 |
-|---|---|
-| 运行时 | Electron 45 |
-| 前端 | Vue 3.5 + TypeScript 5.9 |
-| 构建 | Vite 8 + electron-builder 26 |
-| 状态 / 路由 | Pinia 4 + Vue Router 4 |
+| 类别        | 选型                            |
+| ----------- | ------------------------------- |
+| 运行时      | Electron 45                     |
+| 前端        | Vue 3.5 + TypeScript 5.9        |
+| 构建        | Vite 8 + electron-builder 26    |
+| 状态 / 路由 | Pinia 4 + Vue Router 4          |
 | 测试 / 规范 | Vitest 5 + ESLint 10 + Prettier |
 
 ## 环境要求
@@ -140,7 +140,7 @@ module.exports = {
 ```ts
 const configStore = useConfigStore();
 await configStore.ensureLoaded();
-configStore.config;                    // 当前配置
+configStore.config; // 当前配置
 await configStore.updateConfig({ theme: 'dark' });
 ```
 

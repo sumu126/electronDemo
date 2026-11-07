@@ -1,35 +1,27 @@
 <template>
   <div class="config-panel">
     <h3>应用配置</h3>
-    
+
     <div class="config-section">
       <h4>外观设置</h4>
       <div class="form-group">
         <label>主题:</label>
-        <select 
-          :value="localConfig.theme" 
-          @change="handleThemeChange"
-          class="form-control"
-        >
+        <select :value="localConfig.theme" @change="handleThemeChange" class="form-control">
           <option value="light">浅色</option>
           <option value="dark">深色</option>
           <option value="auto">跟随系统</option>
         </select>
       </div>
-      
+
       <div class="form-group">
         <label>语言:</label>
-        <select 
-          :value="localConfig.language" 
-          @change="handleLanguageChange"
-          class="form-control"
-        >
+        <select :value="localConfig.language" @change="handleLanguageChange" class="form-control">
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>
         </select>
       </div>
     </div>
-    
+
     <div class="config-section">
       <h4>功能设置</h4>
       <div class="form-group checkbox-group">
@@ -37,12 +29,14 @@
           <input
             type="checkbox"
             :checked="localConfig.features.developerTools"
-            @change="handleFeatureToggle('developerTools', ($event.target as HTMLInputElement).checked)"
+            @change="
+              handleFeatureToggle('developerTools', ($event.target as HTMLInputElement).checked)
+            "
           />
           开发者工具
         </label>
       </div>
-      
+
       <div class="form-group checkbox-group">
         <label class="checkbox-label">
           <input
@@ -53,7 +47,7 @@
           数据统计
         </label>
       </div>
-      
+
       <div class="form-group checkbox-group">
         <label class="checkbox-label">
           <input
@@ -65,14 +59,14 @@
         </label>
       </div>
     </div>
-    
+
     <div class="config-actions">
       <button @click="saveConfig" :disabled="loading" class="btn btn-primary">
         {{ loading ? '保存中...' : '保存配置' }}
       </button>
       <button @click="resetConfig" class="btn btn-secondary">重置</button>
     </div>
-    
+
     <div v-if="error" class="error-message">
       {{ error }}
     </div>
@@ -96,7 +90,7 @@ watch(
   (newConfig) => {
     localConfig.value = { ...newConfig };
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 处理主题变化
@@ -104,7 +98,7 @@ const handleThemeChange = (event: Event) => {
   const target = event.target as HTMLSelectElement;
   localConfig.value = {
     ...localConfig.value,
-    theme: target.value as 'light' | 'dark' | 'auto'
+    theme: target.value as 'light' | 'dark' | 'auto',
   };
 };
 
@@ -113,7 +107,7 @@ const handleLanguageChange = (event: Event) => {
   const target = event.target as HTMLSelectElement;
   localConfig.value = {
     ...localConfig.value,
-    language: target.value
+    language: target.value,
   };
 };
 
@@ -123,8 +117,8 @@ const handleFeatureToggle = (feature: keyof AppConfig['features'], checked: bool
     ...localConfig.value,
     features: {
       ...localConfig.value.features,
-      [feature]: checked
-    }
+      [feature]: checked,
+    },
   };
 };
 
@@ -144,7 +138,7 @@ const resetConfig = () => {
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .config-section {

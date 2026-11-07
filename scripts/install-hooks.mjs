@@ -18,22 +18,25 @@ if (!existsSync(gitDir)) {
 const hooksDir = join(gitDir, 'hooks');
 const hookPath = join(hooksDir, 'pre-commit');
 
+// 钩子脚本保持纯 ASCII：不同终端/代码页下中文注释会显示为乱码
 const hook = `#!/bin/sh
-# 提交前门禁：临时跳过用 SKIP_GATES=1 git commit ...
+# Pre-commit gates. Skip once with: SKIP_GATES=1 git commit ...
 set -e
 
 if [ "\${SKIP_GATES:-0}" = "1" ]; then
-  echo "SKIP_GATES=1，跳过提交前门禁"
+  echo "SKIP_GATES=1 set, skipping pre-commit gates"
   exit 0
 fi
 
-echo "→ typecheck"
+echo "== typecheck =="
 npm run typecheck
-echo "→ lint"
+echo "== lint =="
 npm run lint
-echo "→ test"
+echo "== format:check =="
+npm run format:check
+echo "== test =="
 npm test
-echo "→ build"
+echo "== build =="
 npm run build
 `;
 

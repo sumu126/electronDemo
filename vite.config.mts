@@ -44,11 +44,7 @@ const mainConfig = defineConfig({
   },
   build: {
     rollupOptions: {
-      external: [
-        'electron',
-        ...builtinModules,
-        ...builtinModules.map(m => `node:${m}`),
-      ],
+      external: ['electron', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)],
       input: {
         main: join(rootDir, 'src/main/index.ts'),
         preload: join(rootDir, 'src/preload/index.ts'),

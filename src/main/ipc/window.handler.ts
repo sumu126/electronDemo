@@ -4,8 +4,8 @@ import { BaseIpcHandler } from '../ipc/base.handler';
 export class WindowHandler extends BaseIpcHandler {
   private getWindowByEvent(event: IpcMainInvokeEvent): BrowserWindow | null {
     // 通过事件获取对应的窗口
-    const windowId = BrowserWindow.getAllWindows().find(w => 
-      w.webContents.id === event.sender.id
+    const windowId = BrowserWindow.getAllWindows().find(
+      (w) => w.webContents.id === event.sender.id,
     );
     return windowId || null;
   }
@@ -25,7 +25,7 @@ export class WindowHandler extends BaseIpcHandler {
         }
       }
       return Promise.resolve();
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -57,7 +57,7 @@ export class WindowHandler extends BaseIpcHandler {
         }
       }
       return Promise.resolve();
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -80,7 +80,7 @@ export class WindowHandler extends BaseIpcHandler {
         }
       }
       return Promise.resolve();
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }

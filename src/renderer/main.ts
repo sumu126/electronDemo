@@ -18,7 +18,7 @@ app.config.errorHandler = (error, _instance, info) => {
   console.error('[renderer] Unhandled component error:', info, error);
 };
 
-window.addEventListener('unhandledrejection', event => {
+window.addEventListener('unhandledrejection', (event) => {
   console.error('[renderer] Unhandled promise rejection:', event.reason);
 });
 

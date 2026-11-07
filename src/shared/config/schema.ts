@@ -146,12 +146,7 @@ export function stripUnknownConfigKeys(config: unknown): Record<string, unknown>
   return prune(config, CONFIG_SCHEMA);
 }
 
-function collectUnknown(
-  value: unknown,
-  node: SchemaObject,
-  prefix: string,
-  out: string[],
-): void {
+function collectUnknown(value: unknown, node: SchemaObject, prefix: string, out: string[]): void {
   if (!isPlainObject(value)) {
     return;
   }

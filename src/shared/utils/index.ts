@@ -38,19 +38,21 @@ export async function selectFile(options?: Electron.OpenDialogOptions): Promise<
     properties: ['openFile'],
     ...options,
   });
-  
+
   return result.canceled ? null : result.filePaths[0];
 }
 
 /**
  * 打开目录选择对话框
  */
-export async function selectDirectory(options?: Electron.OpenDialogOptions): Promise<string | null> {
+export async function selectDirectory(
+  options?: Electron.OpenDialogOptions,
+): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory'],
     ...options,
   });
-  
+
   return result.canceled ? null : result.filePaths[0];
 }
 

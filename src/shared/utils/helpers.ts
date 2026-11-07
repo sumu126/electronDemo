@@ -11,12 +11,12 @@ export const deepClone = <T>(obj: T): T => {
   }
 
   if (obj instanceof Array) {
-    return obj.map(item => deepClone(item)) as any;
+    return obj.map((item) => deepClone(item)) as any;
   }
 
   if (typeof obj === 'object') {
     const clonedObj: any = {};
-    Object.keys(obj).forEach(key => {
+    Object.keys(obj).forEach((key) => {
       clonedObj[key] = deepClone((obj as any)[key]);
     });
     return clonedObj;
@@ -51,9 +51,12 @@ export const validatePhone = (phone: string): boolean => {
 /**
  * 格式化日期
  */
-export const formatDate = (date: Date | string | number, format: string = 'YYYY-MM-DD HH:mm:ss'): string => {
+export const formatDate = (
+  date: Date | string | number,
+  format: string = 'YYYY-MM-DD HH:mm:ss',
+): string => {
   const d = new Date(date);
-  
+
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -75,7 +78,7 @@ export const formatDate = (date: Date | string | number, format: string = 'YYYY-
  */
 export const objectToQueryString = (obj: Record<string, any>): string => {
   const pairs: string[] = [];
-  
+
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = obj[key];
@@ -84,7 +87,7 @@ export const objectToQueryString = (obj: Record<string, any>): string => {
       }
     }
   }
-  
+
   return pairs.length > 0 ? `?${pairs.join('&')}` : '';
 };
 
@@ -92,7 +95,7 @@ export const objectToQueryString = (obj: Record<string, any>): string => {
  * 驼峰命名转短横线命名
  */
 export const camelToKebab = (str: string): string => {
-  return str.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+  return str.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 };
 
 /**

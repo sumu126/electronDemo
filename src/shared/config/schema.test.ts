@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  findUnknownConfigKeys,
-  sanitizeConfigUpdate,
-  stripUnknownConfigKeys,
-} from './schema';
+import { findUnknownConfigKeys, sanitizeConfigUpdate, stripUnknownConfigKeys } from './schema';
 
 describe('sanitizeConfigUpdate', () => {
   it('接受合法的局部更新', () => {

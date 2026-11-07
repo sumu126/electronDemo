@@ -33,8 +33,8 @@ const props = withDefaults(defineProps<Props>(), {
     { title: '模块化架构', description: '清晰的分层架构，便于维护和扩展' },
     { title: 'TypeScript 支持', description: '完整的类型安全，提升开发体验' },
     { title: '状态管理', description: '使用 Pinia 进行高效的状态管理' },
-    { title: '跨进程通信', description: '安全高效的主进程与渲染进程通信' }
-  ]
+    { title: '跨进程通信', description: '安全高效的主进程与渲染进程通信' },
+  ],
 });
 
 // 如果没有传入标题，则从配置中获取
@@ -56,7 +56,7 @@ onMounted(async () => {
   background: white;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
 }
 

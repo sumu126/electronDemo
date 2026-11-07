@@ -32,10 +32,7 @@ export class ModuleManager {
     console.log(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
   }
 
-  public registerModule(
-    module: Module,
-    options?: { required?: boolean },
-  ): Promise<boolean> {
+  public registerModule(module: Module, options?: { required?: boolean }): Promise<boolean> {
     return this.registry.register(module, options);
   }
 

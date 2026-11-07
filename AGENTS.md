@@ -13,11 +13,14 @@
 ```bash
 npm run typecheck
 npm run lint
+npm run format:check
 npm test
 npm run build
 ```
 
 任何一道门禁失败就不要提交，先修好再提交。
+
+`prepare` 脚本会自动安装 pre-commit 钩子，提交时跑同一套门禁；确实需要跳过时用 `SKIP_GATES=1 git commit ...`。
 
 ## 其他约定
 

@@ -37,13 +37,13 @@ class App {
 
     // 初始化模块
     await this.moduleManager.init();
-    
+
     // 设置配置模块到窗口管理器
     const configModule = this.moduleManager.getModule<ConfigModule>('ConfigModule');
     if (configModule) {
       this.windowManager.setConfigModule(configModule);
     }
-    
+
     // 设置IPC处理器（现在模块已经初始化）
     this.ipcManager.setupHandlers();
 
@@ -51,7 +51,7 @@ class App {
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
       callback(false);
     });
-    
+
     // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
     this.windowManager.createMainWindow();
     this.logger.info('Main window created');
@@ -75,7 +75,7 @@ class App {
 
       this.moduleManager
         .destroy()
-        .catch(error => this.logger.error('Failed to destroy modules', error))
+        .catch((error) => this.logger.error('Failed to destroy modules', error))
         .finally(() => {
           clearTimeout(forceQuitTimer);
           // 退出前把日志队列刷完，崩溃原因才不会丢在缓冲区里
@@ -99,7 +99,7 @@ class App {
       }
     });
   }
-  
+
   public getWindowManager(): WindowManager {
     return this.windowManager;
   }
@@ -148,7 +148,7 @@ if (!gotTheLock) {
     }
   });
 
-  appInstance.init().catch(error => {
+  appInstance.init().catch((error) => {
     logger.error('Failed to initialize app', error);
     app.quit();
   });

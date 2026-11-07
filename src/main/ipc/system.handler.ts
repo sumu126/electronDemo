@@ -18,7 +18,7 @@ export class SystemInfoHandler extends BaseIpcHandler {
           osVersion: os.version(),
         },
       });
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error);
       }

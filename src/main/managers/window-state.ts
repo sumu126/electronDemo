@@ -31,7 +31,11 @@ export function resolveInitialWindowState(
   workArea: Rectangle,
   visibleAreas: Rectangle[],
 ): InitialWindowState {
-  const width = clamp(saved?.width ?? DEFAULT_WIDTH, MIN_WINDOW_WIDTH, workArea.width - EDGE_PADDING);
+  const width = clamp(
+    saved?.width ?? DEFAULT_WIDTH,
+    MIN_WINDOW_WIDTH,
+    workArea.width - EDGE_PADDING,
+  );
   const height = clamp(
     saved?.height ?? DEFAULT_HEIGHT,
     MIN_WINDOW_HEIGHT,
@@ -42,7 +46,7 @@ export function resolveInitialWindowState(
   const y = saved?.y;
   const hasPosition = typeof x === 'number' && typeof y === 'number';
   const candidate = hasPosition ? { x, y, width, height } : null;
-  const isVisible = candidate !== null && visibleAreas.some(area => overlaps(candidate, area));
+  const isVisible = candidate !== null && visibleAreas.some((area) => overlaps(candidate, area));
 
   return {
     width,

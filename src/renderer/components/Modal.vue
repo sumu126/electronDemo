@@ -77,7 +77,7 @@ const FOCUSABLE_SELECTOR = [
 
 const focusableElements = (): HTMLElement[] =>
   Array.from(containerRef.value?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []).filter(
-    element => element.offsetParent !== null,
+    (element) => element.offsetParent !== null,
   );
 
 const handleOverlayClick = () => {
@@ -230,16 +230,20 @@ onBeforeUnmount(release);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideIn {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(-50px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }

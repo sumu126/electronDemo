@@ -14,7 +14,7 @@ export class ConfigHandler extends BaseIpcHandler {
   async getConfig(_event: IpcMainInvokeEvent): Promise<AppConfig> {
     return this.handleAsync<AppConfig>(() => {
       return Promise.resolve(this.configModule.getConfig());
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -26,7 +26,7 @@ export class ConfigHandler extends BaseIpcHandler {
   async updateConfig(_event: IpcMainInvokeEvent, updates: unknown): Promise<void> {
     return this.handleAsync<void>(() => {
       return this.configModule.updateConfig(updates);
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }

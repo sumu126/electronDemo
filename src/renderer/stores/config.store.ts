@@ -64,11 +64,11 @@ export const useConfigStore = defineStore('config', () => {
     }
   };
 
-  const setValue = async <T,>(keyPath: string, value: T): Promise<void> => {
+  const setValue = async <T>(keyPath: string, value: T): Promise<void> => {
     await updateConfig(buildNestedUpdate(keyPath, value));
   };
 
-  const getValue = <T,>(keyPath: string): T | undefined =>
+  const getValue = <T>(keyPath: string): T | undefined =>
     getByPath(config.value, keyPath) as T | undefined;
 
   return {

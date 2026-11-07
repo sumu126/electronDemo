@@ -52,7 +52,7 @@ export interface UserUpdate {
 ```typescript
 export const IPC_CHANNELS = {
   // 现有通道...
-  
+
   // 用户相关通道
   USER_GET_ALL: 'user:get-all',
   USER_GET_BY_ID: 'user:get-by-id',
@@ -101,7 +101,7 @@ export class UserModule {
   }
 
   public async getUserById(id: string): Promise<User | undefined> {
-    return this.users.find(user => user.id === id);
+    return this.users.find((user) => user.id === id);
   }
 
   public async createUser(userData: Omit<User, 'id' | 'createdAt'>): Promise<User> {
@@ -116,11 +116,11 @@ export class UserModule {
   }
 
   public async updateUser(id: string, updates: UserUpdate): Promise<User | undefined> {
-    const userIndex = this.users.findIndex(user => user.id === id);
+    const userIndex = this.users.findIndex((user) => user.id === id);
     if (userIndex === -1) {
       return undefined;
     }
-    
+
     this.users[userIndex] = {
       ...this.users[userIndex],
       ...updates,
@@ -130,7 +130,7 @@ export class UserModule {
 
   public async deleteUser(id: string): Promise<boolean> {
     const initialLength = this.users.length;
-    this.users = this.users.filter(user => user.id !== id);
+    this.users = this.users.filter((user) => user.id !== id);
     return this.users.length < initialLength;
   }
 }
@@ -157,7 +157,7 @@ export class UserHandler extends BaseIpcHandler {
   async getAllUsers(event: IpcMainInvokeEvent): Promise<User[]> {
     return this.handleAsync<User[]>(() => {
       return this.userModule.getAllUsers();
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -168,7 +168,7 @@ export class UserHandler extends BaseIpcHandler {
   async getUserById(event: IpcMainInvokeEvent, id: string): Promise<User | undefined> {
     return this.handleAsync<User | undefined>(() => {
       return this.userModule.getUserById(id);
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -176,10 +176,13 @@ export class UserHandler extends BaseIpcHandler {
     });
   }
 
-  async createUser(event: IpcMainInvokeEvent, userData: Omit<User, 'id' | 'createdAt'>): Promise<User> {
+  async createUser(
+    event: IpcMainInvokeEvent,
+    userData: Omit<User, 'id' | 'createdAt'>,
+  ): Promise<User> {
     return this.handleAsync<User>(() => {
       return this.userModule.createUser(userData);
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -187,10 +190,14 @@ export class UserHandler extends BaseIpcHandler {
     });
   }
 
-  async updateUser(event: IpcMainInvokeEvent, id: string, updates: UserUpdate): Promise<User | undefined> {
+  async updateUser(
+    event: IpcMainInvokeEvent,
+    id: string,
+    updates: UserUpdate,
+  ): Promise<User | undefined> {
     return this.handleAsync<User | undefined>(() => {
       return this.userModule.updateUser(id, updates);
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -201,7 +208,7 @@ export class UserHandler extends BaseIpcHandler {
   async deleteUser(event: IpcMainInvokeEvent, id: string): Promise<boolean> {
     return this.handleAsync<boolean>(() => {
       return this.userModule.deleteUser(id);
-    }).then(response => {
+    }).then((response) => {
       if (!response.success) {
         throw new Error(response.error!);
       }
@@ -232,12 +239,12 @@ export class IpcManager {
 
   public setupHandlers(): void {
     // 现有代码...
-    
+
     // 初始化需要模块的处理器
     this.initializeUserHandler();
-    
+
     // 现有注册代码...
-    
+
     // 注册用户处理器
     this.registerUserHandlers();
   }
@@ -258,35 +265,35 @@ export class IpcManager {
       console.error('UserHandler not initialized');
       return;
     }
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.USER_GET_ALL,
       handler: (event: IpcMainInvokeEvent): Promise<any> => {
         return this.userHandler!.getAllUsers(event);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.USER_GET_BY_ID,
       handler: (event: IpcMainInvokeEvent, id: string): Promise<any> => {
         return this.userHandler!.getUserById(event, id);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.USER_CREATE,
       handler: (event: IpcMainInvokeEvent, userData: any): Promise<any> => {
         return this.userHandler!.createUser(event, userData);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.USER_UPDATE,
       handler: (event: IpcMainInvokeEvent, id: string, updates: any): Promise<any> => {
         return this.userHandler!.updateUser(event, id, updates);
       },
     });
-    
+
     this.registerHandler({
       channel: IPC_CHANNELS.USER_DELETE,
       handler: (event: IpcMainInvokeEvent, id: string): Promise<any> => {
@@ -308,11 +315,12 @@ import { User, UserUpdate } from '@shared/types';
 // 定义暴露给渲染进程的安全API
 contextBridge.exposeInMainWorld('electronAPI', {
   // 现有 API...
-  
+
   // 用户相关 API
   getUserList: () => ipcRenderer.invoke('user:get-all'),
   getUserById: (id: string) => ipcRenderer.invoke('user:get-by-id', id),
-  createUser: (userData: Omit<User, 'id' | 'createdAt'>) => ipcRenderer.invoke('user:create', userData),
+  createUser: (userData: Omit<User, 'id' | 'createdAt'>) =>
+    ipcRenderer.invoke('user:create', userData),
   updateUser: (id: string, updates: UserUpdate) => ipcRenderer.invoke('user:update', id, updates),
   deleteUser: (id: string) => ipcRenderer.invoke('user:delete', id),
 });
@@ -322,7 +330,7 @@ declare global {
   interface Window {
     electronAPI: {
       // 现有 API 定义...
-      
+
       // 用户相关 API 定义
       getUserList: () => Promise<User[]>;
       getUserById: (id: string) => Promise<User | undefined>;
@@ -415,42 +423,40 @@ export const userService = new UserService();
 <template>
   <div class="user-manager">
     <h2>用户管理</h2>
-    
+
     <!-- 添加用户表单 -->
     <div class="user-form" v-if="showAddForm">
       <h3>添加新用户</h3>
       <form @submit.prevent="handleAddUser">
         <div class="form-group">
           <label>姓名:</label>
-          <input v-model="newUser.name" type="text" required>
+          <input v-model="newUser.name" type="text" required />
         </div>
         <div class="form-group">
           <label>邮箱:</label>
-          <input v-model="newUser.email" type="email" required>
+          <input v-model="newUser.email" type="email" required />
         </div>
         <div class="form-group">
           <label>年龄:</label>
-          <input v-model.number="newUser.age" type="number" min="0" required>
+          <input v-model.number="newUser.age" type="number" min="0" required />
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-success" :disabled="loading">
             {{ loading ? '提交中...' : '添加用户' }}
           </button>
-          <button type="button" class="btn btn-secondary" @click="showAddForm = false">
-            取消
-          </button>
+          <button type="button" class="btn btn-secondary" @click="showAddForm = false">取消</button>
         </div>
       </form>
     </div>
-    
+
     <!-- 用户列表 -->
     <div class="user-list">
       <button @click="showAddForm = true" class="btn btn-primary" :disabled="loading">
         添加用户
       </button>
-      
+
       <div class="loading" v-if="loading">加载中...</div>
-      
+
       <table class="user-table" v-if="!loading && users.length > 0">
         <thead>
           <tr>
@@ -476,26 +482,24 @@ export const userService = new UserService();
           </tr>
         </tbody>
       </table>
-      
-      <div class="empty-state" v-if="!loading && users.length === 0">
-        暂无用户数据
-      </div>
+
+      <div class="empty-state" v-if="!loading && users.length === 0">暂无用户数据</div>
     </div>
-    
+
     <!-- 编辑用户弹窗 -->
     <Modal v-model:visible="showEditModal" title="编辑用户" width="500px">
       <form @submit.prevent="handleUpdateUser">
         <div class="form-group">
           <label>姓名:</label>
-          <input v-model="editUser.name" type="text" required>
+          <input v-model="editUser.name" type="text" required />
         </div>
         <div class="form-group">
           <label>邮箱:</label>
-          <input v-model="editUser.email" type="email" required>
+          <input v-model="editUser.email" type="email" required />
         </div>
         <div class="form-group">
           <label>年龄:</label>
-          <input v-model.number="editUser.age" type="number" min="0" required>
+          <input v-model.number="editUser.age" type="number" min="0" required />
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-success" :disabled="loading">
@@ -523,7 +527,7 @@ const showEditModal = ref(false);
 const newUser = ref({
   name: '',
   email: '',
-  age: 0
+  age: 0,
 });
 
 // 编辑用户数据
@@ -532,7 +536,7 @@ const editUser = ref<User>({
   name: '',
   email: '',
   age: 0,
-  createdAt: ''
+  createdAt: '',
 });
 
 // 加载用户列表
@@ -557,7 +561,7 @@ const handleAddUser = async () => {
     newUser.value = {
       name: '',
       email: '',
-      age: 0
+      age: 0,
     };
     showAddForm.value = false;
     // 重新加载用户列表
@@ -584,7 +588,7 @@ const handleUpdateUser = async () => {
     await userService.updateUser(editUser.value.id, {
       name: editUser.value.name,
       email: editUser.value.email,
-      age: editUser.value.age
+      age: editUser.value.age,
     });
     showEditModal.value = false;
     // 重新加载用户列表
@@ -638,7 +642,7 @@ onMounted(() => {
   padding: 20px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .user-form {
@@ -726,16 +730,16 @@ onMounted(() => {
 <template>
   <div class="app-container">
     <!-- 现有代码... -->
-    
+
     <main class="app-main">
       <FrameworkInfo />
-      
+
       <!-- 现有代码... -->
-      
+
       <!-- 添加用户管理组件 -->
       <UserManager />
     </main>
-    
+
     <!-- 现有代码... -->
   </div>
 </template>
@@ -770,7 +774,7 @@ export class ModuleManager {
   public async init(): Promise<void> {
     // 初始化系统模块
     await this.loadCoreModules();
-    
+
     // 初始化用户模块
     await this.loadUserModules();
   }
@@ -778,7 +782,7 @@ export class ModuleManager {
   private async loadCoreModules(): Promise<void> {
     // 核心模块加载逻辑
     console.log('Loading core modules...');
-    
+
     // 注册配置管理模块
     const configModule = new ConfigModule();
     await this.registerModule(configModule);
@@ -787,7 +791,7 @@ export class ModuleManager {
   private async loadUserModules(): Promise<void> {
     // 用户模块加载逻辑
     console.log('Loading user modules...');
-    
+
     // 注册用户管理模块
     const userModule = new UserModule();
     await this.registerModule(userModule);
@@ -825,11 +829,13 @@ npm run electron:dev
 ### 5.1 问题：前端无法调用 API
 
 **可能原因**：
+
 - 预加载脚本中没有暴露 API
 - IPC 通道名称不匹配
 - 后端处理器未注册
 
 **解决方案**：
+
 - 检查 `preload/index.ts` 中的 API 暴露
 - 验证 `IPC_CHANNELS` 中的通道名称
 - 确认 `IpcManager.setupHandlers()` 中注册了处理器
@@ -837,21 +843,25 @@ npm run electron:dev
 ### 5.2 问题：后端处理器未初始化
 
 **可能原因**：
+
 - 模块未在 `ModuleManager` 中注册
 - 模块初始化失败
 
 **解决方案**：
+
 - 检查 `ModuleManager.loadUserModules()` 中是否注册了模块
 - 查看控制台中的模块初始化日志
 
 ### 5.3 问题：数据不更新
 
 **可能原因**：
+
 - 前端未重新加载数据
 - 后端数据操作失败
 - IPC 通信错误
 
 **解决方案**：
+
 - 确保操作后调用 `loadUsers()` 重新加载数据
 - 检查后端模块中的数据操作逻辑
 - 查看 IPC 通信的错误信息
@@ -859,10 +869,12 @@ npm run electron:dev
 ### 5.4 问题：类型错误
 
 **可能原因**：
+
 - TypeScript 类型定义不匹配
 - 参数类型错误
 
 **解决方案**：
+
 - 检查 `shared/types/index.ts` 中的类型定义
 - 验证前后端传递的参数类型
 - 查看 TypeScript 编译错误
@@ -914,7 +926,7 @@ export class UserModule {
       ];
       this.nextId = 3;
       console.log('UserModule initialized with default users');
-      
+
       // 保存默认数据到文件
       await this.saveToFile();
     }
@@ -961,11 +973,11 @@ export class UserModule {
   }
 
   public async updateUser(id: string, updates: UserUpdate): Promise<User | undefined> {
-    const userIndex = this.users.findIndex(user => user.id === id);
+    const userIndex = this.users.findIndex((user) => user.id === id);
     if (userIndex === -1) {
       return undefined;
     }
-    
+
     this.users[userIndex] = {
       ...this.users[userIndex],
       ...updates,
@@ -976,7 +988,7 @@ export class UserModule {
 
   public async deleteUser(id: string): Promise<boolean> {
     const initialLength = this.users.length;
-    this.users = this.users.filter(user => user.id !== id);
+    this.users = this.users.filter((user) => user.id !== id);
     if (this.users.length < initialLength) {
       await this.saveToFile();
       return true;
@@ -995,7 +1007,7 @@ export class UserModule {
 async searchUsers(keyword: string): Promise<User[]> {
   try {
     const allUsers = await this.getAllUsers();
-    return allUsers.filter(user => 
+    return allUsers.filter(user =>
       user.name.toLowerCase().includes(keyword.toLowerCase()) ||
       user.email.toLowerCase().includes(keyword.toLowerCase())
     );
@@ -1011,7 +1023,7 @@ async searchUsers(keyword: string): Promise<User[]> {
 ```vue
 <template>
   <!-- 现有代码... -->
-  
+
   <!-- 用户列表 -->
   <div class="user-list">
     <div class="list-header">
@@ -1019,17 +1031,17 @@ async searchUsers(keyword: string): Promise<User[]> {
         添加用户
       </button>
       <div class="search-box">
-        <input 
-          v-model="searchKeyword" 
-          type="text" 
+        <input
+          v-model="searchKeyword"
+          type="text"
           placeholder="搜索用户..."
           @input="handleSearch"
-        >
+        />
       </div>
     </div>
-    
+
     <!-- 现有代码... -->
-    
+
     <table class="user-table" v-if="!loading && filteredUsers.length > 0">
       <!-- 现有代码... -->
       <tbody>
@@ -1038,12 +1050,12 @@ async searchUsers(keyword: string): Promise<User[]> {
         </tr>
       </tbody>
     </table>
-    
+
     <div class="empty-state" v-if="!loading && filteredUsers.length === 0">
       {{ searchKeyword ? '没有找到匹配的用户' : '暂无用户数据' }}
     </div>
   </div>
-  
+
   <!-- 现有代码... -->
 </template>
 
@@ -1076,11 +1088,11 @@ const handleSearch = () => {
     filteredUsers.value = [...users.value];
     return;
   }
-  
+
   const keyword = searchKeyword.value.toLowerCase();
-  filteredUsers.value = users.value.filter(user => 
-    user.name.toLowerCase().includes(keyword) ||
-    user.email.toLowerCase().includes(keyword)
+  filteredUsers.value = users.value.filter(
+    (user) =>
+      user.name.toLowerCase().includes(keyword) || user.email.toLowerCase().includes(keyword),
   );
 };
 
@@ -1128,6 +1140,7 @@ const handleSearch = () => {
 这个示例展示了如何在 Electron + Vue3 框架中构建完整的功能链路，从后端数据处理到前端用户界面，涵盖了实际开发中的常见场景。
 
 你可以基于这个示例，扩展更多功能，如：
+
 - 用户认证和权限管理
 - 数据导入/导出
 - 分页和排序

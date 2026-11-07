@@ -18,7 +18,7 @@ export const useConfig = () => {
     loading: computed(() => store.loading),
     error: computed(() => store.error),
     updateConfig: (updates: Partial<AppConfig>) => store.updateConfig(updates),
-    setValue: <T,>(keyPath: string, value: T) => store.setValue(keyPath, value),
-    getValue: <T,>(keyPath: string): T | undefined => store.getValue<T>(keyPath),
+    setValue: <T>(keyPath: string, value: T) => store.setValue(keyPath, value),
+    getValue: <T>(keyPath: string): T | undefined => store.getValue<T>(keyPath),
   };
 };

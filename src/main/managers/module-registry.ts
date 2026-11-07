@@ -54,7 +54,7 @@ export class ModuleRegistry {
   }
 
   public list(): ModuleInfo[] {
-    return Array.from(this.modules.values()).map(module => ({
+    return Array.from(this.modules.values()).map((module) => ({
       name: module.name,
       version: module.version ?? '0.0.0',
       description: module.description ?? '',
