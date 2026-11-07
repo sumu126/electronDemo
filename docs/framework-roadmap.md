@@ -138,3 +138,41 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 5. 主进程新增 updater 模块，读取已有的 `features.autoUpdate` 开关决定是否 `checkForUpdatesAndNotify()`
 
 `AppConfig.features.autoUpdate` 已在类型与默认配置中预留，接上第 5 步即可生效。
+
+## 9. 优化轮次实施记录（2026-11-07）
+
+针对全仓复查发现的问题做的一轮"不改变对外约定"的收敛，共 9 处：
+
+### 安全正确性
+
+1. **sender 来源校验改为按 origin 精确比对**（`src/main/ipc/sender.ts`）。原实现用 `startsWith`，`http://localhost:5173.evil.com`、`http://localhost:5173@evil.com`、`http://localhost:51730` 都能通过；打包态 `file://` 前缀也不校验主机。现改为解析 URL 后比对 origin，并拒绝带主机的 file URL；新增 3 条回归用例
+2. **子窗口补齐导航守卫**（`WindowManager.createWindow`）。原先只有主窗口注册 `will-navigate` / `setWindowOpenHandler`，多窗口 API 一旦被使用，安全假设会静默失效
+3. **生产 CSP 不再放行 HMR WebSocket**。`ws://localhost:5173` 改由 `vite.config.mts` 的 `dev-csp-websocket` 插件在开发态注入，构建产物为 `connect-src 'self'`
+
+### 可靠性与体验
+
+4. **配置落盘改为串行化 + 原子写**（`ConfigModule.saveConfig`）。窗口状态防抖与 `setValue` 并发时不再互相覆盖，进程中途退出也不会留下半截 `config.json`
+5. **窗口首帧就绪后再显示**（`show: false` + `ready-to-show`），消除启动白屏闪烁；增加 `did-fail-load` 兜底，加载失败时窗口仍然可见
+6. **Windows 设置 AppUserModelId**，任务栏身份与托盘气泡通知才可靠
+
+### 工程化
+
+7. **preload 白名单增加编译期完整性断言**：新增 `IpcChannel` 却漏加白名单时 `typecheck` 直接失败（`Type 'true' is not assignable to type 'never'`），不再等到运行时 `Blocked IPC channel`
+8. **typecheck 覆盖配置文件**：`tsconfig.json` 的 `include` 加入 `vite.config.mts`、`vitest.config.mts`，`moduleResolution` 由 `node` 升级为 `bundler`（旧设置下 Vite 8 的 ESM 类型无法解析）；删除从未被引用的 `tsconfig.node.json`
+9. **构建脚本不再改写源文件**：移除 `build.mjs` 里对 `index.html` 的标题热改（原先每次构建都会弄脏工作区，且 `productName` 取错了层级）；窗口标题改由渲染进程按配置 `appName` 设置
+
+### 验证结果
+
+- `typecheck` / `lint` / `test`（37 个用例，较上轮 +3）/ `build` 全绿
+- 白名单断言做了反向验证：临时新增 `demo:hello` 通道，`typecheck` 如期报错，还原后恢复通过
+- 开发态 CSP 含 `ws://localhost:5173`，产物 CSP 不含，均已实测
+- 真机启动冒烟：主进程日志正常、`config.json` 原子写入无 `.tmp` 残留、无 IPC 拦截、无未捕获异常
+- 已知环境坑：在带 `ELECTRON_RUN_AS_NODE=1` 的终端里启动会报 `requestSingleInstanceLock` 未定义，README 已补排查说明
+
+### 尚未处理（下一轮候选）
+
+- 插件系统在生产包内无法 `require` 第三方依赖（`files` 排除了 `node_modules`），需在文档声明或提供依赖注入约定
+- 24 处 `console.*` 未接入 `Logger`，渲染端异常未上报主进程
+- `theme` / `language` / `analytics` / `autoUpdate` 四个配置项仍无消费方
+- `IpcResponse` 信封在 handler 内拆包后不再跨进程，属可删抽象
+- CI 未覆盖 Windows 与真实 Electron 启动

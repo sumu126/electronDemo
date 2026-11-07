@@ -43,6 +43,8 @@ npm run electron:dev
 
 > 渲染进程由 Vite 热更新；修改主进程或 preload 后需要重新执行 `electron:dev`（当前未接主进程热重启）。
 
+> **启动报 `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`**：当前终端把 `ELECTRON_RUN_AS_NODE=1` 传给了子进程（VS Code 等 Electron 系终端常见），Electron 会被当成普通 Node 执行。启动前清掉该变量即可：PowerShell `$env:ELECTRON_RUN_AS_NODE=''`，cmd `set ELECTRON_RUN_AS_NODE=`。
+
 ### 常用命令
 
 ```bash
@@ -108,7 +110,7 @@ docs/                         # 路线与实施记录
 1. `src/shared/constants/index.ts`：加入 `IPC_CHANNELS`
 2. `src/shared/types/index.ts`：在 `IpcInvokeMap` 声明返回类型
 3. `src/main/ipc-manager/ipc.manager.ts`：注册 handler
-4. `src/preload/index.ts`：把通道加入白名单（必须内联，不能从共享模块导入）
+4. `src/preload/index.ts`：把通道加入白名单（必须内联，不能从共享模块导入）。白名单与 `IpcChannel` 的一致性有编译期断言兜底，漏加会直接 `typecheck` 失败，不会拖到运行时
 5. 渲染端调用：`window.electronAPI.invoke('demo:hello')`，返回值自动获得类型
 
 ### 新增用户模块
@@ -144,7 +146,9 @@ await configStore.updateConfig({ theme: 'dark' });
 
 - 默认值统一在 `src/shared/config/defaults.ts`
 - 渲染端不再使用 `localStorage`
-- 主进程落盘位置：`userData/config.json`
+- 主进程落盘位置：`userData/config.json`（串行化 + 临时文件 rename 原子写入）
+- 窗口标题取自配置的 `appName`，构建脚本不再改写 `index.html`
+- `features.developerTools` 控制开发态启动时是否自动打开 DevTools
 
 ### 窗口状态
 
@@ -183,9 +187,9 @@ npm run electron:build-win   # Windows 安装包：dist-app
 
 - `nodeIntegration: false`、`contextIsolation: true`、`sandbox: true`
 - preload 只暴露白名单通道，已移除任意 `send` / `on`
-- IPC 校验 sender 来源（开发态 `http://localhost:5173`，打包后 `file://`）
+- IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）
 - 文件读写限制在 `userData` 目录
-- CSP 禁止 `unsafe-eval`；站外导航与 `window.open` 默认拦截
+- CSP 禁止 `unsafe-eval`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截
 - Web 权限请求默认拒绝
 
 ## 文档
