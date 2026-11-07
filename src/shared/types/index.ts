@@ -18,8 +18,8 @@ export interface WindowConfig {
 }
 
 export interface FeatureFlags {
+  /** 控制开发态自动打开 DevTools，以及生产态是否放行开发者工具 */
   developerTools: boolean;
-  analytics: boolean;
 }
 
 export interface TrayConfig {

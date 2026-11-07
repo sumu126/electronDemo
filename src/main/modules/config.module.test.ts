@@ -47,7 +47,7 @@ describe('ConfigModule', () => {
     expect(saved.appName).toBe('test-app');
     expect(saved.version).toBe('9.9.9');
     expect(saved.theme).toBe('auto');
-    expect(saved.features.analytics).toBe(true);
+    expect(saved.features).toEqual({ developerTools: false });
     expect(module.getConfig().appName).toBe('test-app');
   });
 
@@ -93,7 +93,7 @@ describe('ConfigModule', () => {
     expect(saved.theme).toBe('dark');
     expect(saved.window.width).toBe(1280);
     expect(saved.window.height).toBe(800);
-    expect(saved.features.analytics).toBe(true);
+    expect(saved.features).toEqual({ developerTools: false });
   });
 
   it('setValue 走同一套校验并落盘', async () => {
@@ -111,13 +111,13 @@ describe('ConfigModule', () => {
     await Promise.all([
       module.updateConfig({ theme: 'dark' }),
       module.updateConfig({ language: 'en-US' }),
-      module.updateConfig({ features: { analytics: false } }),
+      module.updateConfig({ features: { developerTools: true } }),
     ]);
 
     const saved = readConfig();
     expect(saved.theme).toBe('dark');
     expect(saved.language).toBe('en-US');
-    expect(saved.features.analytics).toBe(false);
+    expect(saved.features.developerTools).toBe(true);
   });
 
   it('原子写不留下 .tmp 残留', async () => {

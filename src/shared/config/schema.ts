@@ -34,7 +34,6 @@ const CONFIG_SCHEMA: SchemaObject = {
   },
   features: {
     developerTools: 'boolean',
-    analytics: 'boolean',
   },
   tray: {
     hasShownFirstTimeNotice: 'boolean',

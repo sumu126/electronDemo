@@ -36,17 +36,6 @@
           {{ t.config.developerTools }}
         </label>
       </div>
-
-      <div class="form-group checkbox-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            :checked="localConfig.features.analytics"
-            @change="handleFeatureToggle('analytics', ($event.target as HTMLInputElement).checked)"
-          />
-          {{ t.config.analytics }}
-        </label>
-      </div>
     </div>
 
     <div class="config-actions">

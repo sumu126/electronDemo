@@ -18,7 +18,6 @@ export function createDefaultConfig(overrides: Partial<AppConfig> = {}): AppConf
     },
     features: {
       developerTools: false,
-      analytics: true,
     },
     tray: {
       hasShownFirstTimeNotice: false,
