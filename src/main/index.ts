@@ -3,6 +3,7 @@ import { join } from 'path';
 import { WindowManager } from './managers/window.manager';
 import { IpcManager } from './ipc-manager/ipc.manager';
 import { ModuleManager } from './managers/module.manager';
+import { applyApplicationMenu } from './managers/menu.manager';
 import { ConfigModule } from './modules/config.module';
 import { Logger } from './utils/logger';
 import { initLogger, getLogger } from './utils/app-logger';
@@ -17,6 +18,9 @@ const userDataOverride = process.env.ELECTRON_USER_DATA_DIR;
 if (userDataOverride) {
   app.setPath('userData', userDataOverride);
 }
+
+// 启动打点起点：从主进程脚本开始执行算起
+const startedAt = Date.now();
 
 class App {
   private windowManager: WindowManager;
@@ -36,6 +40,7 @@ class App {
 
   public async init(): Promise<void> {
     await app.whenReady();
+    const readyAt = Date.now();
 
     // Windows 上任务栏身份与托盘气泡通知依赖 AppUserModelId，缺失时通知可能不显示
     if (process.platform === 'win32') {
@@ -46,6 +51,7 @@ class App {
 
     // 初始化模块
     await this.moduleManager.init();
+    const modulesReadyAt = Date.now();
 
     // 设置配置模块到窗口管理器
     const configModule = this.moduleManager.getModule<ConfigModule>('ConfigModule');
@@ -55,15 +61,31 @@ class App {
 
     // 设置IPC处理器（现在模块已经初始化）
     this.ipcManager.setupHandlers();
+    const ipcReadyAt = Date.now();
 
     // 默认拒绝所有 Web 权限请求（摄像头、麦克风、通知等按需再开放）
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
       callback(false);
     });
 
+    // 应用菜单用原生 role，菜单文字跟随系统语言；开发者工具项由配置决定
+    applyApplicationMenu({
+      allowDevTools: Boolean(configModule?.getValue<boolean>('features.developerTools')),
+    });
+
     // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
     this.windowManager.createMainWindow();
+    const windowCreatedAt = Date.now();
     this.logger.info('Main window created');
+
+    // 启动耗时分段打点，便于判断慢在哪一段（Electron 自身启动不在此区间内）
+    this.logger.info('Startup completed', {
+      ready: readyAt - startedAt,
+      modules: modulesReadyAt - readyAt,
+      ipc: ipcReadyAt - modulesReadyAt,
+      window: windowCreatedAt - ipcReadyAt,
+      total: windowCreatedAt - startedAt,
+    });
 
     // 设置应用退出时的处理：等待模块清理完成后再真正退出
     app.on('before-quit', (event) => {

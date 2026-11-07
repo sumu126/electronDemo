@@ -104,6 +104,7 @@ export class WindowManager {
 
     this.loadApp(this.mainWindow);
     this.registerNavigationGuards(this.mainWindow);
+    this.registerDevtoolsGuard(this.mainWindow);
     this.registerWindowStateEvents(this.mainWindow);
 
     return this.mainWindow;
@@ -141,6 +142,36 @@ export class WindowManager {
       if (!isTrustedSenderUrl(url, isDevelopment)) {
         event.preventDefault();
       }
+    });
+  }
+
+  /**
+   * 生产态禁用开发者工具，除非配置里显式打开 features.developerTools。
+   * 光去掉菜单还不够：F12 / Ctrl+Shift+I / Cmd+Alt+I 仍能直接唤出，这里一并拦掉。
+   */
+  private registerDevtoolsGuard(window: BrowserWindow): void {
+    const allowDevTools = Boolean(this.configModule?.getValue<boolean>('features.developerTools'));
+
+    // 开发态需要 DevTools，不拦
+    if (allowDevTools || process.defaultApp) {
+      return;
+    }
+
+    window.webContents.on('before-input-event', (event, input) => {
+      const key = input.key.toLowerCase();
+      const isDevtoolsShortcut =
+        input.key === 'F12' ||
+        (input.control && input.shift && key === 'i') ||
+        (input.meta && input.alt && key === 'i');
+
+      if (isDevtoolsShortcut) {
+        event.preventDefault();
+      }
+    });
+
+    // 兜底：通过其它途径打开时立即关闭
+    window.webContents.on('devtools-opened', () => {
+      window.webContents.closeDevTools();
     });
   }
 
@@ -214,8 +245,9 @@ export class WindowManager {
       },
     });
 
-    // 子窗口同样施加导航与外链守卫，避免安全假设只在主窗口成立
+    // 子窗口同样施加导航、外链与开发者工具守卫，避免安全假设只在主窗口成立
     this.registerNavigationGuards(window);
+    this.registerDevtoolsGuard(window);
 
     // 窗口关闭时从映射中移除
     window.on('closed', () => {
