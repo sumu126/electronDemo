@@ -349,7 +349,7 @@ Phase 3 剩余：清理 `dist-app` 占用后复跑正式打包；可选实现主
 ### 平台支持矩阵
 
 - **Windows 10+**：官方支持。托盘、气泡通知、AppUserModelId、NSIS 安装包均实测
-- **Linux（现代桌面）**：官方支持。CI 通过 xvfb 实测启动与 e2e；无状态栏环境下托盘建不起来时会允许直接关窗
+- **Linux（现代桌面）**：官方支持。无状态栏环境下托盘建不起来时会允许直接关窗；CI 已配置 xvfb 下的冒烟与 e2e，但**尚未推送执行**，AppImage/deb 出包也未实测
 - **macOS**：不发布、不验证。代码保留 `appMenu` 等分支，属 best-effort，README 已标明
 
 ### 真实交互 e2e
