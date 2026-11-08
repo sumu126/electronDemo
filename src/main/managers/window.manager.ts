@@ -7,6 +7,8 @@ import { getMessages, type AppMessages } from '@shared/i18n';
 import { isTrustedSenderUrl, DEV_SERVER_URL } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
 import { getLogger } from '../utils/app-logger';
+import { isDevtoolsShortcut } from './devtools-shortcut';
+import { pickDecodableImage } from './tray-icon';
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
 export class WindowManager {
@@ -158,13 +160,7 @@ export class WindowManager {
     }
 
     window.webContents.on('before-input-event', (event, input) => {
-      const key = input.key.toLowerCase();
-      const isDevtoolsShortcut =
-        input.key === 'F12' ||
-        (input.control && input.shift && key === 'i') ||
-        (input.meta && input.alt && key === 'i');
-
-      if (isDevtoolsShortcut) {
+      if (isDevtoolsShortcut(input)) {
         event.preventDefault();
       }
     });
@@ -293,22 +289,26 @@ export class WindowManager {
       return true;
     }
 
-    // 创建托盘图标
-    let iconPath = join(app.getAppPath(), 'assets/icon.ico');
+    // 创建托盘图标：按 ico → png 顺序尝试，取第一个能真正解码出图像的
+    // （Linux 上 ICO 可能解不出来，只看文件是否存在会得到不可见的空图标）
+    const iconCandidates = [
+      join(app.getAppPath(), 'assets/icon.ico'),
+      join(app.getAppPath(), 'assets/icon.png'),
+    ];
 
-    // 检查图标文件是否存在
-    if (!fs.existsSync(iconPath)) {
-      // 尝试使用PNG图标
-      const pngIconPath = join(app.getAppPath(), 'assets/icon.png');
-      if (fs.existsSync(pngIconPath)) {
-        iconPath = pngIconPath;
-      }
+    const pickedIcon = pickDecodableImage(iconCandidates, (iconPath) =>
+      fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null,
+    );
+
+    if (!pickedIcon) {
+      // 图标全部不可用时托盘不可见，按「托盘不可用」处理：允许直接关窗，避免窗口被藏起来又唤不回
+      getLogger().warn('No decodable tray icon found, treating tray as unavailable');
+      this.tray = null;
+      return false;
     }
 
     try {
-      const trayIcon = nativeImage.createFromPath(iconPath);
-      // 图标缺失时用空图标占位，托盘本身仍然可用（可点击恢复窗口）
-      this.tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
+      this.tray = new Tray(pickedIcon.image);
     } catch (error) {
       // 托盘建不起来（部分 Linux 桌面无状态栏）时返回 false，调用方据此允许关窗
       getLogger().error('Failed to create tray', error);
