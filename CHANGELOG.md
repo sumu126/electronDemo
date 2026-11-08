@@ -50,6 +50,7 @@
 - **启动体验**：`show: false` + `ready-to-show`，消除白屏闪烁；`did-fail-load` 兜底显示
 - **配置保存报 `An object could not be cloned.`**：Vue 的 ref/reactive 是 Proxy，无法被 IPC 的结构化克隆复制。配置更新与日志上报现在先在渲染进程转成纯数据再 `invoke`；失败提示也从原始英文异常改成可读文案并写入日志
 - **`assets/icon.png` 是改了扩展名的 ICO**：与 `icon.ico` 字节完全相同，Windows 不受影响，但 Linux 打包要求真 PNG。已重采样为 512×512 真 PNG（正式发布建议换成设计稿导出的 512/1024 版本）
+- **Linux 托盘图标不可见却仍拦截关窗**：原逻辑只看 `icon.ico` 是否存在，Linux 上 `nativeImage` 可能解不出 ICO，得到空图像 → 托盘不可见，但窗口仍被 `hide()`。现在按 ico → png 顺序取第一个能解码的；全部不可用时按托盘不可用处理，允许直接关窗
 
 ### Removed
 

@@ -433,3 +433,39 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 - 文档中的命令与 `package.json` scripts 逐条比对一致
 - 文档中的配置键与 `shared/config/schema.ts` 一致
 - `format:check` / `typecheck` / `lint` / `test`（105 用例）/ `build` / `smoke` / `e2e` 全绿
+
+## 19. 第六轮：托盘边界、共享层解耦、一致性守卫（2026-11-08）
+
+又一轮复查，找到三个"平时不会炸、但会在特定平台或下次改动时炸"的点。
+
+### 修掉 Linux 托盘的真实缺陷
+
+原逻辑是「`icon.ico` 文件存在就用它」。Linux 上 `nativeImage` 可能解不出 ICO（文件明明在），
+得到空图像 → 托盘图标不可见；但 `close` 依然 `preventDefault()` + `hide()`。
+结果：窗口被藏起来、托盘又看不到，用户只能杀进程。这个组合在 CI 的 xvfb 里测不出来。
+
+- 新增 `pickDecodableImage`：按 ico → png 顺序取**第一个能解码出非空图像**的候选
+- 全部候选不可用（含解码抛错）时按「托盘不可用」处理：记 warn、返回 false，close 不再拦截
+- 5 条用例覆盖回退链
+
+### 抽两个纯函数出来测
+
+- `isDevtoolsShortcut`：F12 / Ctrl+Shift+I / Cmd+Alt+I 三种组合 + 近似组合不误伤（4 条用例）
+- 这两块逻辑原来埋在 390 行的 `window.manager` 里，没有任何测试
+
+### 共享层不再依赖 electron
+
+`shared/utils/index.ts` 一直 import 着 `dialog` / `app`：渲染端从 `@shared/utils` 根导入会在
+构建期失败，文档里只能写"别引根路径"。本轮删掉三个依赖 electron 的函数与一个死函数
+（`getUserDataPath` / `selectFile` / `selectDirectory` / `formatBytes`，全部无调用方），
+`shared/` 下已无 electron 依赖。
+
+### 防止默认值与 schema 漂移
+
+两份手写清单最容易出现"加了配置项忘了加白名单"，表现为运行时写入被拒、单测却全绿。
+新增两条一致性用例：默认配置不得包含 schema 之外的键；默认配置本身必须能通过 schema 校验。
+
+### 验证结果
+
+- `test` 105 → **116 用例**；`typecheck` / `lint` / `format:check` / `build` / `smoke` / `e2e` 全绿
+- 托盘修复无法在本机（Windows 能解码 ICO）复现原缺陷，靠纯函数用例覆盖回退链
