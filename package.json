@@ -4,6 +4,7 @@
   "description": "Electron + Vue3 Application Framework",
   "main": "dist-electron/main.cjs",
   "author": "sumu126",
+  "desktopName": "electron-vue3-demo.desktop",
   "scripts": {
     "dev": "vite",
     "build": "node ./build.mjs",
@@ -75,7 +76,8 @@
       "category": "Utility",
       "icon": "assets/icon.png",
       "maintainer": "sumu126 <ssk200302@126.com>",
-      "synopsis": "Electron + Vue3 desktop application framework"
+      "synopsis": "Electron + Vue3 desktop application framework",
+      "syncDesktopName": true
     }
   },
   "license": "MIT",
