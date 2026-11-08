@@ -1,6 +1,8 @@
-import { dialog, app } from 'electron';
 import fs from 'fs/promises';
-import path from 'path';
+
+/**
+ * 路径与文件工具（主进程与渲染进程共用，**不依赖 electron**）。
+ */
 
 /**
  * 检查路径是否存在
@@ -23,53 +25,5 @@ export async function ensureDir(dirPath: string): Promise<void> {
   }
 }
 
-/**
- * 获取用户数据目录下的指定路径
- */
-export function getUserDataPath(...paths: string[]): string {
-  return path.join(app.getPath('userData'), ...paths);
-}
-
-/**
- * 打开文件选择对话框
- */
-export async function selectFile(options?: Electron.OpenDialogOptions): Promise<string | null> {
-  const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    ...options,
-  });
-
-  return result.canceled ? null : result.filePaths[0];
-}
-
-/**
- * 打开目录选择对话框
- */
-export async function selectDirectory(
-  options?: Electron.OpenDialogOptions,
-): Promise<string | null> {
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    ...options,
-  });
-
-  return result.canceled ? null : result.filePaths[0];
-}
-
-/**
- * 格式化字节大小为人类可读格式
- */
-export function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
-
-// 纯函数工具统一从 helpers 导出，避免依赖 electron
+// 纯函数工具统一从 helpers 导出
 export { deepMerge } from './helpers';
