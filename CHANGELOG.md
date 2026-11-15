@@ -54,6 +54,7 @@
 - **Linux 托盘图标不可见却仍拦截关窗**：原逻辑只看 `icon.ico` 是否存在，Linux 上 `nativeImage` 可能解不出 ICO，得到空图像 → 托盘不可见，但窗口仍被 `hide()`。现在按 ico → png 顺序取第一个能解码的；全部不可用时按托盘不可用处理，允许直接关窗
 - **ConfigPanel 无障碍**：`label` 补 `for`/`id` 关联，保存失败提示补 `aria-live="polite"`
 - **`config.json` 的 `version` 不再过期**：原先只在首次写默认值时取自 `app.getVersion()`，升级应用后一直是旧值；现在每次加载都刷新（`version` 是应用元数据，不是用户配置）
+- **冒烟脚本的日志竞态**：`smoke` 只等 `config.json` 与 `main.log` 文件出现就断言「Main window created」，但配置文件早于建窗日志、日志又是异步落盘，Windows CI 首跑因此失败。改为轮询到目标日志行真正出现，失败时输出日志末尾
 
 ### Removed
 

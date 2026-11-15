@@ -547,4 +547,37 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 
 - `window.manager` 的托盘菜单接线、状态防抖计时器、真实窗口事件（纯逻辑已覆盖）
 - 应用菜单文案跟随系统语言，未跟随应用内 `language`
-- Linux AppImage/deb 出包（配置与工作流已就绪，尚未实跑）
+
+## 22. 对外开放前夜：外人克隆验证与 CI 首跑（2026-11-15）
+
+维护者把 69 个提交推到了 `github.com/sumu126/electronDemo`（公开仓库），工作流第一次真正执行。
+
+### 外人克隆验证（本地）
+
+模拟外部使用者：把**已提交的内容**克隆到临时目录，从零走一遍。
+
+```
+git clone → npm ci（501 包，17s）→ build → typecheck → lint → test（126）→ smoke → e2e
+```
+
+**全部通过**，且 `npm ci` 后工作区干净（`prepare` 安装钩子不产生改动）。
+
+这次验证抓到一个真实缺陷：**冒烟脚本的日志竞态**。它只等 `config.json` 与 `logs/main.log`
+两个文件出现，而 `config.json` 在 ConfigModule 加载阶段就写了，早于建窗日志；日志又是异步落盘，
+于是检查早了一拍。以前没暴露是因为本机跑得慢、恰好赶上。已改为轮询到目标日志行真正出现，
+失败时打印日志末尾（`584f220`）。
+
+### CI 首跑结果（fc139e8）
+
+| 工作流          | 平台           | 结果                                                                      |
+| --------------- | -------------- | ------------------------------------------------------------------------- |
+| CI              | ubuntu-latest  | ✅ 全绿：typecheck / lint / format / coverage / build / smoke(xvfb) / e2e |
+| CI              | windows-latest | ⚠️ 前五步全绿，`Smoke test (Windows)` 失败 —— 即上述竞态，修复待推送      |
+| Package (Linux) | ubuntu-latest  | ✅ 成功产出 AppImage + deb，`dpkg-deb -I/-c` 校验通过                     |
+
+**Linux 出包这条线到此闭环**：不再是"配置就绪未实测"，而是 CI 实际构建过、产物可下载。
+
+### 结论
+
+- 用来开发应用：可以，Windows 与 Linux 都有实机证据
+- 对外开放：可以，剩下的只是把竞态修复推上去让 windows job 复跑
