@@ -16,6 +16,7 @@
 - **CI 双平台**：ubuntu（xvfb）+ windows 矩阵，CI 中执行冒烟与 e2e
 - **支持平台收口**：官方支持 Windows 10+ 与 Linux，macOS 明确不发布、不验证
 - **Linux 打包**：`build.linux` 增加 AppImage + deb 目标（`category` / `maintainer` / `synopsis`）与 `npm run electron:build-linux`；Linux 包需在 Linux 上构建
+- **Linux 出包流水线**：新增 `.github/workflows/package-linux.yml`，推送 main 或打 `v*` tag 时在 ubuntu runner 上产出 AppImage + deb 并上传 artifact（尚未实跑，首次推送后验证）
 - **组件测试**：jsdom + `@vue/test-utils`，覆盖 Modal、ConfigPanel、AppErrorBoundary、theme、i18n
 - **覆盖率基线**：接入 `@vitest/coverage-v8` 并设阈值防倒退
 - **提交钩子**：`prepare` 自动安装 pre-commit 钩子，跑五项门禁；`SKIP_GATES=1` 可跳过

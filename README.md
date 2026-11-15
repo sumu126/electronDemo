@@ -258,6 +258,8 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 | Linux   | AppImage + deb | 用 `assets/icon.png`（512×512 PNG）；**必须在 Linux 上打**，AppImage/deb 依赖 Linux 工具链（`dpkg`、`fpm` 等） |
 
 > 手上只有 Windows 时怎么办：可以交叉打出 **`tar.gz`**（`npx electron-builder --linux tar.gz`），解压后 `chmod +x` 即可运行——它验证不了安装包，但能验证应用本体。AppImage 需要建符号链接（Windows 要开发者模式），deb 需要 Linux 的 `fpm`，两者在 Windows 上都出不来。
+>
+> 不想在本地装 Linux 环境：推送到 GitHub 后，`Package (Linux)` 工作流会在 ubuntu runner 上自动产出 AppImage + deb，并作为 artifact 上传（保留 14 天）。
 
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`

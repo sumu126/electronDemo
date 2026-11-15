@@ -497,3 +497,10 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 - 修正了 build 配置里缺 `desktopName` / `syncDesktopName` 导致的 Linux 窗口关联告警
 - 记录了一条可复用的交付路径：只有 Windows 时用 `electron-builder --linux tar.gz` 验证应用本体，
   安装包留给 Linux 或 CI
+- 新增 `Package (Linux)` 工作流（`.github/workflows/package-linux.yml`）：推送 `main` 或打 `v*` tag 时，
+  在 ubuntu runner 上产出 AppImage + deb 并以 artifact 上传。**同样尚未实跑**，首次推送后才会验证。
+
+### 为什么不在 VM 里出包
+
+验证用的 Ubuntu 虚拟机没有 Node 环境，安装 Node 22 + `npm ci` + 打包工具链需要额外下载约 1 GB。
+既然仓库有 GitHub 远端，把出包交给 ubuntu runner 更划算：零环境成本、可重复、产物带 artifact 保留 14 天。

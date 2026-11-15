@@ -1,0 +1,51 @@
+name: Package (Linux)
+
+# 只在需要产出安装包时跑，不占 PR 的反馈时间
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  linux-packages:
+    name: build AppImage + deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Electron 与 electron-builder 的工具链下载很占时间，缓存下来
+      - name: Cache electron / electron-builder
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-45-${{ hashFiles('package-lock.json') }}
+
+      - run: npm ci
+
+      - name: Build AppImage + deb
+        run: npm run electron:build-linux
+
+      - name: Verify artifacts
+        run: |
+          set -e
+          ls -lh dist-app
+          file dist-app/*.AppImage
+          dpkg-deb -I dist-app/*.deb
+          dpkg-deb -c dist-app/*.deb | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            dist-app/*.AppImage
+            dist-app/*.deb
+          if-no-files-found: error
+          retention-days: 14
