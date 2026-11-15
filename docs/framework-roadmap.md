@@ -469,3 +469,31 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 
 - `test` 105 → **116 用例**；`typecheck` / `lint` / `format:check` / `build` / `smoke` / `e2e` 全绿
 - 托盘修复无法在本机（Windows 能解码 ICO）复现原缺陷，靠纯函数用例覆盖回退链
+
+## 20. Linux 实机验证（2026-11-15）
+
+第一次在真实 Linux 上跑起来：Ubuntu 24.04 x64（内核 6.14）虚拟机，安装包用 Windows 交叉打出的
+`tar.gz`，解压 + `chmod +x` + SUID 沙箱后启动。
+
+### 已验证
+
+| 项           | 结果                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| 二进制启动   | ✅ 窗口正常显示，无崩溃                                                                      |
+| 界面渲染     | ✅ 首页卡片、四个功能块、按钮布局正常                                                        |
+| 主题         | ✅ 配置为 `auto` 时跟随系统深色模式，`data-theme` 生效                                       |
+| 系统信息 IPC | ✅ 返回真实数据（`platform: linux`、`arch: x64`、`release: 6.14.0-36-generic`、用户 `sumu`） |
+| i18n         | ✅ 中文文案正常                                                                              |
+| 引导流程     | ✅ 首次运行自动创建 `~/.config/electron-vue3-demo/` 下的配置与日志                           |
+
+### 仍未验证
+
+- **AppImage / deb 出包**：Windows 上下不来（AppImage 需要建符号链接 → `EPERM`；deb 需要 Linux 的 `fpm` → `ENOENT`），
+  只能在 Linux 上 `npm run electron:build-linux`
+- **托盘关闭行为**：待点关闭按钮确认（这正是第 19 轮 ico→png 回退修复要覆盖的场景）
+
+### 附带产出
+
+- 修正了 build 配置里缺 `desktopName` / `syncDesktopName` 导致的 Linux 窗口关联告警
+- 记录了一条可复用的交付路径：只有 Windows 时用 `electron-builder --linux tar.gz` 验证应用本体，
+  安装包留给 Linux 或 CI
