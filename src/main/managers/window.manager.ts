@@ -9,6 +9,7 @@ import { ConfigModule } from '../modules/config.module';
 import { getLogger } from '../utils/app-logger';
 import { isDevtoolsShortcut } from './devtools-shortcut';
 import { pickDecodableImage } from './tray-icon';
+import { createWindowStateSnapshot, resolveCloseAction, resolveLoadTarget } from './window-policy';
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
 export class WindowManager {
@@ -78,20 +79,20 @@ export class WindowManager {
       this.mainWindow?.show();
     });
 
-    // 窗口关闭事件 - 最小化到系统托盘；托盘不可用时允许真正关闭
+    // 窗口关闭事件 - 最小化到系统托盘；托盘不可用或正在退出时允许真正关闭
     this.mainWindow.on('close', (event) => {
-      if (this.quitting) {
+      const trayAvailable = this.quitting ? true : this.setupTray();
+
+      if (resolveCloseAction({ quitting: this.quitting, trayAvailable }) === 'hide') {
+        event.preventDefault();
+        this.mainWindow?.hide();
         return;
       }
 
-      // 托盘建不起来时不再拦截关闭，否则窗口隐藏后用户没有任何入口可以唤回
-      if (!this.setupTray()) {
+      // 托盘建不起来时清掉半成品，避免残留一个不可见的托盘图标
+      if (!this.quitting && !trayAvailable) {
         this.destroyTray();
-        return;
       }
-
-      event.preventDefault();
-      this.mainWindow?.hide();
     });
 
     // 窗口真正关闭事件
@@ -113,18 +114,24 @@ export class WindowManager {
 
   // 统一入口：无论是首次启动、激活还是二次实例，创建窗口后都会被正确加载
   private loadApp(window: BrowserWindow): void {
-    // 注意：Electron 45 下用 `electron .` 启动时 app.isPackaged 也会返回 true，
-    // 因此这里用 process.defaultApp 判断是否为开发模式。
-    if (process.defaultApp) {
-      window.loadURL(DEV_SERVER_URL);
+    const target = resolveLoadTarget({
+      // 注意：Electron 45 下用 `electron .` 启动时 app.isPackaged 也会返回 true，
+      // 因此用 process.defaultApp 判断是否为开发模式。
+      isDevelopment: Boolean(process.defaultApp),
+      devServerUrl: DEV_SERVER_URL,
+      resourcesPath: process.resourcesPath,
+    });
+
+    if (target.kind === 'url') {
+      window.loadURL(target.url);
       // 开发者工具由配置开关控制，让 features.developerTools 真正生效
       if (this.configModule?.getValue<boolean>('features.developerTools')) {
         window.webContents.openDevTools();
       }
-    } else {
-      // 在打包版本中，使用资源路径
-      window.loadFile(join(process.resourcesPath, 'dist/index.html'));
+      return;
     }
+
+    window.loadFile(target.file);
   }
 
   private registerNavigationGuards(window: BrowserWindow): void {
@@ -200,17 +207,10 @@ export class WindowManager {
     }
 
     const bounds = window.getNormalBounds();
+    const snapshot = createWindowStateSnapshot(bounds, window.isMaximized());
 
     void this.configModule
-      .updateConfig({
-        window: {
-          width: bounds.width,
-          height: bounds.height,
-          x: bounds.x,
-          y: bounds.y,
-          maximized: window.isMaximized(),
-        },
-      })
+      .updateConfig({ window: snapshot })
       .catch((error) => getLogger().error('Failed to save window state', error));
   }
 
