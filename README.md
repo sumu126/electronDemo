@@ -273,7 +273,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 
 - `nodeIntegration: false`、`contextIsolation: true`、`sandbox: true`
 - preload 只暴露白名单通道，已移除任意 `send` / `on`
-- IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；主窗口与 `createWindow` 创建的子窗口都施加导航守卫
+- IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；导航守卫与 DevTools 守卫对所有创建的窗口生效（框架目前只建主窗口，多窗口 API 已按"无人使用"移除）
 - **不提供通用文件读写通道**：它能写进 `userData/modules`，与动态模块加载叠加等于给渲染进程留了持久化提权链
 - 配置写入走 schema 白名单校验，拒绝未知键、错误类型与原型键
 - **生产态收起 DevTools**：除非 `features.developerTools` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截

@@ -6,8 +6,8 @@
         <button class="btn btn-secondary" :disabled="systemInfoLoading" @click="fetchSystemInfo">
           {{ systemInfoLoading ? t.home.loading : t.home.fetchSystemInfo }}
         </button>
-        <button class="btn btn-primary" @click="toggleDevMode">
-          {{ isDeveloperMode ? t.home.exitDeveloperMode : t.home.developerMode }}
+        <button class="btn btn-primary" @click="debugPanelOpen = !debugPanelOpen">
+          {{ debugPanelOpen ? t.home.hideDebugTools : t.home.debugTools }}
         </button>
         <button class="btn btn-success" @click="showConfigPanel = true">{{ t.home.config }}</button>
       </div>
@@ -21,9 +21,9 @@
         <pre>{{ JSON.stringify(systemInfo, null, 2) }}</pre>
       </section>
 
-      <section v-if="isDeveloperMode" class="info-section">
-        <h2>{{ t.home.developerTools }}</h2>
-        <p>{{ t.home.developerModeHint }}</p>
+      <section v-if="debugPanelOpen" class="info-section">
+        <h2>{{ t.home.debugTools }}</h2>
+        <p>{{ t.home.debugHint }}</p>
         <button class="btn btn-info" @click="pingBackend">{{ t.home.testBackend }}</button>
         <p v-if="pingResult">{{ t.home.pingResult }}: {{ pingResult }}</p>
       </section>
@@ -40,7 +40,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { useSystemInfo } from '../composables';
 import { useI18n } from '../composables/useI18n';
-import { useAppStore } from '../stores/app.store';
 import { useConfigStore } from '../stores/config.store';
 import FrameworkInfo from '../components/FrameworkInfo.vue';
 import Modal from '../components/Modal.vue';
@@ -48,10 +47,10 @@ import ConfigPanel from '../components/ConfigPanel.vue';
 
 const { t } = useI18n();
 const { systemInfo, loading: systemInfoLoading, fetchSystemInfo } = useSystemInfo();
-const appStore = useAppStore();
 const configStore = useConfigStore();
 
-const isDeveloperMode = computed(() => appStore.isDeveloperMode);
+// 调试面板只是首页的演示状态，不需要进全局 store（持久化的开关是 features.developerTools）
+const debugPanelOpen = ref(false);
 const showConfigPanel = ref(false);
 const pingResult = ref<string | null>(null);
 
@@ -60,10 +59,6 @@ const title = computed(() =>
     ? `${configStore.config.appName} ${t.value.app.titleSuffix}`
     : t.value.app.defaultTitle,
 );
-
-const toggleDevMode = () => {
-  appStore.toggleDeveloperMode();
-};
 
 const pingBackend = async () => {
   try {

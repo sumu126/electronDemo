@@ -20,11 +20,10 @@ export interface AppMessages {
     fetchSystemInfo: string;
     loading: string;
     systemInfo: string;
-    developerMode: string;
-    exitDeveloperMode: string;
     config: string;
-    developerTools: string;
-    developerModeHint: string;
+    debugTools: string;
+    hideDebugTools: string;
+    debugHint: string;
     testBackend: string;
     pingResult: string;
   };
@@ -62,11 +61,10 @@ const zhCN: AppMessages = {
     fetchSystemInfo: '获取系统信息',
     loading: '加载中...',
     systemInfo: '系统信息',
-    developerMode: '开发者模式',
-    exitDeveloperMode: '退出开发者模式',
     config: '配置',
-    developerTools: '开发者工具',
-    developerModeHint: '当前应用运行在开发者模式下',
+    debugTools: '调试工具',
+    hideDebugTools: '收起调试工具',
+    debugHint: '用于验证主进程与渲染进程之间的通信',
     testBackend: '测试后端通信',
     pingResult: '后端返回',
   },
@@ -125,11 +123,10 @@ const enUS: AppMessages = {
     fetchSystemInfo: 'System info',
     loading: 'Loading...',
     systemInfo: 'System information',
-    developerMode: 'Developer mode',
-    exitDeveloperMode: 'Exit developer mode',
     config: 'Settings',
-    developerTools: 'Developer tools',
-    developerModeHint: 'The application is running in developer mode',
+    debugTools: 'Debug tools',
+    hideDebugTools: 'Hide debug tools',
+    debugHint: 'Verifies the main ↔ renderer IPC round trip',
     testBackend: 'Test IPC',
     pingResult: 'Backend replied',
   },

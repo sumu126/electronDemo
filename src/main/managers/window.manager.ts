@@ -13,7 +13,6 @@ import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from '
 
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
-  private windows: Map<string, BrowserWindow> = new Map();
   private tray: Tray | null = null;
   private configModule: ConfigModule | null = null;
   private quitting = false;
@@ -213,64 +212,6 @@ export class WindowManager {
         },
       })
       .catch((error) => getLogger().error('Failed to save window state', error));
-  }
-
-  public createWindow(
-    id: string,
-    options: Electron.BrowserWindowConstructorOptions,
-  ): BrowserWindow {
-    // 检查窗口是否已存在
-    if (this.windows.has(id)) {
-      const existingWindow = this.windows.get(id);
-      if (existingWindow && !existingWindow.isDestroyed()) {
-        existingWindow.focus();
-        return existingWindow;
-      } else {
-        this.windows.delete(id);
-      }
-    }
-
-    const window = new BrowserWindow({
-      ...options,
-      webPreferences: {
-        preload: join(__dirname, './preload.cjs'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,
-        ...(options.webPreferences || {}),
-      },
-    });
-
-    // 子窗口同样施加导航、外链与开发者工具守卫，避免安全假设只在主窗口成立
-    this.registerNavigationGuards(window);
-    this.registerDevtoolsGuard(window);
-
-    // 窗口关闭时从映射中移除
-    window.on('closed', () => {
-      this.windows.delete(id);
-    });
-
-    this.windows.set(id, window);
-
-    return window;
-  }
-
-  public getWindow(id: string): BrowserWindow | null {
-    return this.windows.get(id) || null;
-  }
-
-  public closeWindow(id: string): boolean {
-    const window = this.getWindow(id);
-    if (window && !window.isDestroyed()) {
-      window.close();
-      this.windows.delete(id);
-      return true;
-    }
-    return false;
-  }
-
-  public getAllWindows(): BrowserWindow[] {
-    return Array.from(this.windows.values()).filter((window) => !window.isDestroyed());
   }
 
   public getMainWindow(): BrowserWindow | null {

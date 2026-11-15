@@ -7,7 +7,6 @@ import { ModuleRegistry } from './module-registry';
 import { getLogger } from '../utils/app-logger';
 import type { LogSink } from '../utils/app-logger';
 import type { Module } from './module.types';
-import type { ModuleInfo } from '@shared/types';
 
 export type { Module } from './module.types';
 
@@ -38,20 +37,8 @@ export class ModuleManager {
     getLogger().info(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
   }
 
-  public registerModule(module: Module, options?: { required?: boolean }): Promise<boolean> {
-    return this.registry.register(module, options);
-  }
-
-  public unregisterModule(name: string): Promise<boolean> {
-    return this.registry.unregister(name);
-  }
-
   public getModule<T extends Module = Module>(name: string): T | undefined {
     return this.registry.get<T>(name);
-  }
-
-  public listModules(): ModuleInfo[] {
-    return this.registry.list();
   }
 
   public destroy(): Promise<void> {

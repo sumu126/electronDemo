@@ -46,13 +46,6 @@ export class IpcManager {
     });
   }
 
-  public unregisterHandler(channel: string): void {
-    if (this.handlers.has(channel)) {
-      this.ipcMain.removeHandler(channel);
-      this.handlers.delete(channel);
-    }
-  }
-
   public setupHandlers(): void {
     // 初始化需要模块的处理器
     this.initializeConfigHandler();

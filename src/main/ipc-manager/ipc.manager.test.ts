@@ -115,16 +115,6 @@ describe('IpcManager', () => {
     warn.mockRestore();
   });
 
-  it('unregisterHandler 移除通道', () => {
-    const manager = createManager();
-    manager.registerHandler({ channel: 'ping', handler: async () => 'pong' });
-
-    manager.unregisterHandler('ping');
-
-    expect(fake.removed).toContain('ping');
-    expect(fake.handlers.has('ping')).toBe(false);
-  });
-
   it('缺少 ConfigModule 时 setupHandlers 抛错（核心依赖不可缺失）', () => {
     const brokenManager = new IpcManager(ipcMain as never, { getModule: () => undefined } as never);
 
