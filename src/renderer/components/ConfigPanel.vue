@@ -5,8 +5,13 @@
     <div class="config-section">
       <h4>{{ t.config.appearance }}</h4>
       <div class="form-group">
-        <label>{{ t.config.theme }}:</label>
-        <select :value="localConfig.theme" class="form-control" @change="handleThemeChange">
+        <label for="config-theme">{{ t.config.theme }}:</label>
+        <select
+          id="config-theme"
+          :value="localConfig.theme"
+          class="form-control"
+          @change="handleThemeChange"
+        >
           <option value="light">{{ t.config.themeLight }}</option>
           <option value="dark">{{ t.config.themeDark }}</option>
           <option value="auto">{{ t.config.themeAuto }}</option>
@@ -14,8 +19,13 @@
       </div>
 
       <div class="form-group">
-        <label>{{ t.config.language }}:</label>
-        <select :value="localConfig.language" class="form-control" @change="handleLanguageChange">
+        <label for="config-language">{{ t.config.language }}:</label>
+        <select
+          id="config-language"
+          :value="localConfig.language"
+          class="form-control"
+          @change="handleLanguageChange"
+        >
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>
         </select>
@@ -25,8 +35,9 @@
     <div class="config-section">
       <h4>{{ t.config.features }}</h4>
       <div class="form-group checkbox-group">
-        <label class="checkbox-label">
+        <label class="checkbox-label" for="config-developer-tools">
           <input
+            id="config-developer-tools"
             type="checkbox"
             :checked="localConfig.features.developerTools"
             @change="
@@ -45,7 +56,7 @@
       <button class="btn btn-secondary" @click="resetConfig">{{ t.config.reset }}</button>
     </div>
 
-    <div v-if="error" class="error-message" role="alert">
+    <div v-if="error" class="error-message" role="alert" aria-live="polite">
       {{ t.config.saveFailed }}
     </div>
   </div>

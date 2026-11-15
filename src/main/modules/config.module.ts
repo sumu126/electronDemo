@@ -66,6 +66,10 @@ export class ConfigModule {
 
         // 深度合并默认配置和已校验的保存配置
         this.config = deepMerge(this.getDefaultConfig(), stripUnknownConfigKeys(savedConfig));
+
+        // version 是应用元数据，不是用户配置：升级应用后要跟着刷新，否则会一直停在旧值
+        this.config.version = app.getVersion() || this.config.version;
+
         await this.saveConfig();
       } catch (error) {
         // 如果配置文件不存在或解析失败，则使用默认配置

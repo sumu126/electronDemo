@@ -51,6 +51,16 @@ describe('ConfigModule', () => {
     expect(module.getConfig().appName).toBe('test-app');
   });
 
+  it('升级应用后刷新 version 字段（它不是用户配置）', async () => {
+    writeFileSync(configPath(), JSON.stringify({ version: '0.0.1', theme: 'dark' }), 'utf-8');
+
+    const module = await createModule();
+
+    expect(module.getConfig().version).toBe('9.9.9');
+    expect(readConfig().version).toBe('9.9.9');
+    expect(readConfig().theme).toBe('dark');
+  });
+
   it('加载时裁剪未知键，并把原文件备份为 config.json.bak', async () => {
     writeFileSync(
       configPath(),
