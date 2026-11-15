@@ -103,6 +103,27 @@ const main = async () => {
   const logPath = join(userDataDir, 'logs', 'main.log');
   const deadline = Date.now() + TIMEOUT_MS;
 
+  const readLog = () => (existsSync(logPath) ? readFileSync(logPath, 'utf-8') : '');
+
+  // 日志是异步落盘的，且 config.json 会先于「Main window created」写入：
+  // 只等文件出现就检查内容会撞上竞态，必须轮询到目标行真正出现。
+  const waitForLogLine = async (needle) => {
+    while (Date.now() < deadline) {
+      if (exited) {
+        fail(`Electron exited before writing "${needle}"`);
+      }
+
+      if (readLog().includes(needle)) {
+        return;
+      }
+
+      await sleep(POLL_INTERVAL_MS);
+    }
+
+    const tail = readLog().split('\n').slice(-15).join('\n');
+    fail(`main.log never contained "${needle}"${tail ? `\n--- log tail ---\n${tail}` : ''}`);
+  };
+
   try {
     while (Date.now() < deadline) {
       if (exited) {
@@ -120,22 +141,17 @@ const main = async () => {
       fail('config.json or logs/main.log was not created in time');
     }
 
+    await waitForLogLine('Main window created');
+    // 启动打点在窗口创建之后，同样要等它落盘
+    await waitForLogLine('Startup completed');
+
     const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
     if (!config.appName) {
       fail('config.json has no appName');
     }
 
-    const log = readFileSync(logPath, 'utf-8');
-
-    if (!log.includes('Main window created')) {
-      fail('main.log does not contain "Main window created"');
-    }
-
-    // 启动打点必须真的落盘，否则性能观测形同虚设
-    if (!log.includes('Startup completed')) {
-      fail('main.log does not contain "Startup completed"');
-    }
+    const log = readLog();
 
     if (/uncaught|Blocked IPC/i.test(log)) {
       fail('main.log contains uncaught errors or blocked IPC calls');
