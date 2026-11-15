@@ -504,3 +504,47 @@ CI 在 ubuntu（xvfb）与 windows 各跑一次。
 
 验证用的 Ubuntu 虚拟机没有 Node 环境，安装 Node 22 + `npm ci` + 打包工具链需要额外下载约 1 GB。
 既然仓库有 GitHub 远端，把出包交给 ubuntu runner 更划算：零环境成本、可重复、产物带 artifact 保留 14 天。
+
+## 21. 第七轮：清死代码、合概念、补测试（2026-11-15）
+
+按「还剩下什么」的审计结果执行，原则是**删代码优先于加代码**。
+
+### 删掉 7 个无调用方的公开 API
+
+审计确认这些方法定义了、甚至有测试，但没有任何业务调用方——留着会让人以为框架支持多窗口：
+
+- `WindowManager.createWindow` / `closeWindow` / `getWindow` / `getAllWindows` 与 `windows` 映射
+- `ModuleManager.registerModule` / `unregisterModule` / `listModules`（`ModuleRegistry` 内部能力保留）
+- `IpcManager.unregisterHandler`（原先只有测试在调用）
+
+### 合并两个"开发者模式"
+
+`app.store.isDeveloperMode`（会话级）与 `features.developerTools`（持久化）同名不同义。删掉 `app.store`，
+首页那个演示面板改成页内局部 `ref`，语义改为「调试工具」；i18n 键同步为
+`home.debugTools` / `hideDebugTools` / `debugHint`。
+
+### 三处小修
+
+- ConfigPanel 的 `label` 补 `for`/`id` 关联，错误提示补 `aria-live="polite"`
+- `useSystemInfo` 从 `ref<any>` 收紧为 `ref<SystemInfo | null>`，catch 分支用 `unknown`
+- `config.json` 的 `version` 每次加载都用 `app.getVersion()` 刷新（它是应用元数据，不是用户配置）
+
+### 补测试
+
+- **窗口决策抽成纯函数**（`managers/window-policy.ts`）：关闭判定（退出中/托盘不可用 → 真关闭）、
+  加载目标（开发态 URL vs 打包 `resources/dist/index.html`）、窗口状态快照；6 条用例
+- **插件加载集成测试**（`module.manager.test.ts`）：临时 userData + 真实 `.cjs` +
+  主进程那段 `createRequire`，覆盖 init/destroy、`__frameworkLogger` 暴露、坏模块隔离、
+  工厂/default 导出、目录缺失；4 条用例
+- 覆盖率 statements 49.58% → **53.17%**，阈值上调到 51/54/48/51
+
+### 验证结果
+
+- `test` 116 → **126 用例**；`typecheck` / `lint` / `format:check` / `build` / `smoke` / `e2e` 全绿
+- 覆盖率：statements 53.17% / branches 56.35% / functions 50.22% / lines 53.76%
+
+### 仍未处理
+
+- `window.manager` 的托盘菜单接线、状态防抖计时器、真实窗口事件（纯逻辑已覆盖）
+- 应用菜单文案跟随系统语言，未跟随应用内 `language`
+- Linux AppImage/deb 出包（配置与工作流已就绪，尚未实跑）

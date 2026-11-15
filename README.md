@@ -238,7 +238,7 @@ npm run build
 
 CI 额外做三件事（工作流已配置，首次推送后才会实际执行）：
 
-- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 46% / branches 45% / functions 42% / lines 46%）
+- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 51% / branches 54% / functions 48% / lines 51%）
 - 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
 - 两个平台各跑一次 `npm run e2e`：驱动界面点开配置面板、改主题、切语言，校验整条 IPC 链路（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
 

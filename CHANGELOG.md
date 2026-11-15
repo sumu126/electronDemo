@@ -52,9 +52,13 @@
 - **配置保存报 `An object could not be cloned.`**：Vue 的 ref/reactive 是 Proxy，无法被 IPC 的结构化克隆复制。配置更新与日志上报现在先在渲染进程转成纯数据再 `invoke`；失败提示也从原始英文异常改成可读文案并写入日志
 - **`assets/icon.png` 是改了扩展名的 ICO**：与 `icon.ico` 字节完全相同，Windows 不受影响，但 Linux 打包要求真 PNG。已重采样为 512×512 真 PNG（正式发布建议换成设计稿导出的 512/1024 版本）
 - **Linux 托盘图标不可见却仍拦截关窗**：原逻辑只看 `icon.ico` 是否存在，Linux 上 `nativeImage` 可能解不出 ICO，得到空图像 → 托盘不可见，但窗口仍被 `hide()`。现在按 ico → png 顺序取第一个能解码的；全部不可用时按托盘不可用处理，允许直接关窗
+- **ConfigPanel 无障碍**：`label` 补 `for`/`id` 关联，保存失败提示补 `aria-live="polite"`
+- **`config.json` 的 `version` 不再过期**：原先只在首次写默认值时取自 `app.getVersion()`，升级应用后一直是旧值；现在每次加载都刷新（`version` 是应用元数据，不是用户配置）
 
 ### Removed
 
+- **7 个无调用方的公开 API**：`WindowManager.createWindow/closeWindow/getWindow/getAllWindows`（框架只建主窗口）、`ModuleManager.registerModule/unregisterModule/listModules`、`IpcManager.unregisterHandler`——留着会让人误以为支持多窗口
+- **`renderer/stores/app.store.ts`**：与 `features.developerTools` 同名的会话级状态，合并为首页局部状态，语义改为「调试工具」
 - **`features.autoUpdate`**：自动更新是明确的非目标，保留这个永远不生效的开关会误导使用者；类型、默认值、schema、配置面板与中英文案一并移除。旧配置里的该字段会按未知键裁剪（有 `.bak` 备份），打包配置保持 `publish: null`
 - **`features.analytics`**：新框架不内置遥测/埋点，这个勾了也不生效的开关同样移除；需要业务级开关的按 README 的「新增一个功能开关」recipe 自己加。旧配置里的该字段按未知键裁剪
 
