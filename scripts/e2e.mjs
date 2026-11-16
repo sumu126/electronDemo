@@ -2,15 +2,15 @@
 
 /**
  * 真实交互 e2e：启动 Vite + Electron，用渲染进程的远程调试端口驱动界面，
- * 走一遍「打开配置 → 改主题 → 保存 → 切语言」的完整链路，最后核对落盘的 config.json。
+ * 走一遍「窗口状态恢复 → 打开配置 → 改主题 → 保存 → 切语言 → 重启再验证」的完整链路。
  *
  * 为什么需要它：单测把 invoke mock 掉之后，像「Vue Proxy 无法结构化克隆」这类问题
- * 在单测里永远是绿的，只有真实 IPC 链路才会暴露。
+ * 在单测里永远是绿的，只有真实 IPC 链路才会暴露；窗口状态恢复同理。
  *
  * 用法：node scripts/e2e.mjs
  */
 import { spawn } from 'child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import electronPath from 'electron';
@@ -22,6 +22,8 @@ const DEBUG_PORT = 9223;
 const DEV_URL = 'http://localhost:5173';
 const isWindows = process.platform === 'win32';
 const TOTAL_TIMEOUT_MS = 120_000;
+const SEEDED_WIDTH = 1000;
+const SEEDED_HEIGHT = 700;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -42,6 +44,20 @@ const killTree = (child) => {
 
   child.kill('SIGTERM');
 };
+
+const waitForExit = (child, timeoutMs = 5000) =>
+  new Promise((resolve) => {
+    if (!child || child.exitCode !== null) {
+      resolve();
+      return;
+    }
+
+    const timer = setTimeout(resolve, timeoutMs);
+    child.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 
 const fail = (message) => {
   console.error(`[e2e] FAIL: ${message}`);
@@ -154,16 +170,63 @@ const connectRenderer = async () => {
 const configPath = () => join(userDataDir, 'config.json');
 const readConfig = () => JSON.parse(readFileSync(configPath(), 'utf-8'));
 
+const env = { ...process.env, ELECTRON_USER_DATA_DIR: userDataDir };
+delete env.ELECTRON_RUN_AS_NODE;
+
+let electron = null;
+
+const launchRenderer = async () => {
+  const args = ['.', '--disable-gpu', `--remote-debugging-port=${DEBUG_PORT}`];
+  if (process.env.CI) {
+    args.push('--no-sandbox');
+  }
+
+  electron = spawn(electronPath, args, {
+    cwd: root,
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  electron.stdout.on('data', (chunk) => logs.push(chunk.toString()));
+  electron.stderr.on('data', (chunk) => logs.push(chunk.toString()));
+
+  return connectRenderer();
+};
+
+const stopRenderer = async () => {
+  killTree(electron);
+  await waitForExit(electron);
+  electron = null;
+  // 等调试端口释放，避免第二次启动连到已退出的旧目标
+  await sleep(500);
+};
+
+const assertWindowSize = async (evaluate, label, expected) => {
+  const expectedWidth = expected?.width ?? SEEDED_WIDTH;
+  const expectedHeight = expected?.height ?? SEEDED_HEIGHT;
+  const width = await evaluate('window.outerWidth');
+  const height = await evaluate('window.outerHeight');
+
+  // 允许 16px 误差：Windows 的窗口边框/阴影度量与 BrowserWindow bounds 不完全相等
+  assert(
+    Math.abs(width - expectedWidth) <= 16 && Math.abs(height - expectedHeight) <= 16,
+    `${label}: expected window ~${expectedWidth}x${expectedHeight}, got ${width}x${height}`,
+  );
+};
+
 const main = async () => {
-  const env = { ...process.env, ELECTRON_USER_DATA_DIR: userDataDir };
-  delete env.ELECTRON_RUN_AS_NODE;
+  // 预置窗口状态，第一次启动就应该按它建窗；关闭时再写回同一份状态
+  mkdirSync(userDataDir, { recursive: true });
+  writeFileSync(
+    configPath(),
+    JSON.stringify({ window: { width: SEEDED_WIDTH, height: SEEDED_HEIGHT } }, null, 2),
+    'utf-8',
+  );
 
   const vite = spawn(process.execPath, [viteBin, '--port', '5173', '--strictPort'], {
     cwd: root,
     stdio: 'ignore',
   });
-
-  let electron;
 
   try {
     await waitFor(
@@ -179,29 +242,16 @@ const main = async () => {
       'Vite dev server did not start',
     );
 
-    const args = ['.', '--disable-gpu', `--remote-debugging-port=${DEBUG_PORT}`];
-    if (process.env.CI) {
-      args.push('--no-sandbox');
-    }
-
-    electron = spawn(electronPath, args, {
-      cwd: root,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    electron.stdout.on('data', (chunk) => logs.push(chunk.toString()));
-    electron.stderr.on('data', (chunk) => logs.push(chunk.toString()));
-
-    const renderer = await connectRenderer();
+    const renderer = await launchRenderer();
     const { evaluate } = renderer;
 
-    // 1. 应用已挂载，且没有错误边界
+    // 1. 应用已挂载，且按预置状态恢复窗口尺寸
     await waitFor(
       async () => (await evaluate(`Boolean(document.querySelector('.app-container'))`)) === true,
       15_000,
       'app container not rendered',
     );
+    await assertWindowSize(evaluate, 'first launch');
 
     // 2. 打开配置面板
     await evaluate(`document.querySelector('.btn-success').click()`);
@@ -259,9 +309,46 @@ const main = async () => {
     );
 
     renderer.close();
-    console.log('[e2e] OK: 配置面板保存、主题应用、语言切换全部通过真实 IPC 链路');
+
+    // 6. 真正重启一次：窗口状态、主题、语言都应从 config.json 恢复
+    const savedWindow = readConfig().window;
+    assert(
+      Math.abs(savedWindow.width - SEEDED_WIDTH) <= 16 &&
+        Math.abs(savedWindow.height - SEEDED_HEIGHT) <= 16,
+      `saved window state is not derived from seed: ${savedWindow.width}x${savedWindow.height}`,
+    );
+
+    await stopRenderer();
+
+    const second = await launchRenderer();
+    const evaluateSecond = second.evaluate;
+
+    await waitFor(
+      async () =>
+        (await evaluateSecond(`Boolean(document.querySelector('.app-container'))`)) === true,
+      15_000,
+      'app container not rendered after restart',
+    );
+
+    await assertWindowSize(evaluateSecond, 'after restart', savedWindow);
+
+    assert(
+      readConfig().theme === 'dark' && readConfig().language === 'en-US',
+      'theme or language was not persisted across restart',
+    );
+
+    await waitFor(
+      async () =>
+        (await evaluateSecond(`document.body.textContent.includes('System info')`)) === true,
+      5_000,
+      'UI text did not restore to English after restart',
+    );
+
+    second.close();
+    console.log('[e2e] OK: 窗口状态恢复、配置保存、主题应用、语言切换与重启恢复全部通过真实链路');
   } finally {
     killTree(electron);
+    await waitForExit(electron);
     killTree(vite);
     await sleep(800);
     await removeDirWithRetry(userDataDir);
