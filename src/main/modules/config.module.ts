@@ -162,3 +162,8 @@ export class ConfigModule {
     await this.updateConfig(update);
   }
 }
+
+/** 运行时类型守卫：供 ModuleManager.getModule 使用，避免按名字强转 */
+export function isConfigModule(value: unknown): value is ConfigModule {
+  return value instanceof ConfigModule;
+}

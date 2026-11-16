@@ -50,8 +50,8 @@ export class ModuleRegistry {
     return true;
   }
 
-  public get<T extends Module = Module>(name: string): T | undefined {
-    return this.modules.get(name) as T | undefined;
+  public get(name: string): Module | undefined {
+    return this.modules.get(name);
   }
 
   public list(): ModuleInfo[] {

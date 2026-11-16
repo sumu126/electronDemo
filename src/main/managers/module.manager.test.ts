@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { ModuleManager } from './module.manager';
+import { isModule } from './module-loader';
+import { ConfigModule, isConfigModule } from '../modules/config.module';
 
 const state = vi.hoisted(() => ({ userDataDir: '' }));
 
@@ -58,7 +60,7 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     const manager = new ModuleManager();
     await manager.init();
 
-    expect(manager.getModule('HelloModule')).toBeDefined();
+    expect(manager.getModule('HelloModule', isModule)).toBeDefined();
     expect(existsSync(join(modulesDir(), 'init.txt'))).toBe(true);
     // 插件拿不到框架代码，日志入口必须通过全局暴露
     expect((globalThis as { __frameworkLogger?: unknown }).__frameworkLogger).toBeDefined();
@@ -66,7 +68,7 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     await manager.destroy();
 
     expect(existsSync(join(modulesDir(), 'destroy.txt'))).toBe(true);
-    expect(manager.getModule('HelloModule')).toBeUndefined();
+    expect(manager.getModule('HelloModule', isModule)).toBeUndefined();
   });
 
   it('坏模块只隔离自身，不影响其它模块', async () => {
@@ -77,9 +79,9 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     const manager = new ModuleManager();
     await manager.init();
 
-    expect(manager.getModule('GoodModule')).toBeDefined();
-    expect(manager.getModule('BrokenModule')).toBeUndefined();
-    expect(manager.getModule('InvalidModule')).toBeUndefined();
+    expect(manager.getModule('GoodModule', isModule)).toBeDefined();
+    expect(manager.getModule('BrokenModule', isModule)).toBeUndefined();
+    expect(manager.getModule('InvalidModule', isModule)).toBeUndefined();
   });
 
   it('工厂函数与 default 导出都能被识别', async () => {
@@ -95,8 +97,8 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     const manager = new ModuleManager();
     await manager.init();
 
-    expect(manager.getModule('FactoryModule')).toBeDefined();
-    expect(manager.getModule('DefaultModule')).toBeDefined();
+    expect(manager.getModule('FactoryModule', isModule)).toBeDefined();
+    expect(manager.getModule('DefaultModule', isModule)).toBeDefined();
   });
 
   it('目录不存在时静默跳过', async () => {
@@ -105,7 +107,7 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     const manager = new ModuleManager();
 
     await expect(manager.init()).resolves.toBeUndefined();
-    expect(manager.getModule('HelloModule')).toBeUndefined();
+    expect(manager.getModule('HelloModule', isModule)).toBeUndefined();
   });
 
   it('只收集核心模块的 IPC 贡献，磁盘插件不能注册通道', async () => {
@@ -121,10 +123,21 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     const manager = new ModuleManager();
     await manager.init();
 
-    expect(manager.getModule('EvilModule')).toBeDefined();
+    expect(manager.getModule('EvilModule', isModule)).toBeDefined();
     expect(manager.collectIpcHandlers().map((item) => item.channel)).toEqual([
       'config:get',
       'config:update',
     ]);
+  });
+
+  it('getModule 用运行时守卫校验类型，不再按名字强转', async () => {
+    const manager = new ModuleManager();
+    await manager.init();
+
+    expect(manager.getModule('ConfigModule', isConfigModule)).toBeInstanceOf(ConfigModule);
+    expect(manager.getModule('ConfigModule', isModule)).toBeInstanceOf(ConfigModule);
+
+    const rejectAll = (_module: unknown): _module is never => false;
+    expect(manager.getModule('ConfigModule', rejectAll)).toBeUndefined();
   });
 });

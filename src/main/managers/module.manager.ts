@@ -43,8 +43,16 @@ export class ModuleManager {
     getLogger().info(`Loaded user modules: ${loaded.length > 0 ? loaded.join(', ') : 'none'}`);
   }
 
-  public getModule<T extends Module = Module>(name: string): T | undefined {
-    return this.registry.get<T>(name);
+  /**
+   * 按名称取模块，并用调用方提供的类型守卫做运行时校验。
+   * 不再用 `getModule<T>()` 强转：名字与类型对不上时返回 undefined，而不是把错误类型交给调用方。
+   */
+  public getModule<K extends Module>(
+    name: string,
+    guard: (module: Module) => module is K,
+  ): K | undefined {
+    const module = this.registry.get(name);
+    return module && guard(module) ? module : undefined;
   }
 
   /** 收集核心模块贡献的 IPC 通道；用户插件不参与，避免越权注册 */
