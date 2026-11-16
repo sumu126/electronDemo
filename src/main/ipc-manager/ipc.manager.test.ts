@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcMain } from 'electron';
+import { createDefaultConfig } from '@shared/config/defaults';
+import type { IpcHandlerContribution } from '../ipc/ipc-contribution';
 import { IpcManager } from './ipc.manager';
 
 const fake = vi.hoisted(() => ({
@@ -22,12 +24,17 @@ vi.mock('electron', () => ({
 }));
 
 const configStub = {
-  getConfig: vi.fn(() => ({ appName: 'app', theme: 'dark' })),
-  updateConfig: vi.fn(async () => undefined),
+  getConfig: vi.fn(() => createDefaultConfig({ theme: 'dark' })),
+  updateConfig: vi.fn(async (_updates: unknown) => undefined),
 };
 
+const configContributions: IpcHandlerContribution[] = [
+  { channel: 'config:get', handler: () => configStub.getConfig() },
+  { channel: 'config:update', handler: (_event, updates) => configStub.updateConfig(updates) },
+];
+
 const moduleManagerStub = {
-  getModule: vi.fn(() => configStub),
+  collectIpcHandlers: vi.fn(() => configContributions),
 };
 
 const createManager = () => new IpcManager(ipcMain as never, moduleManagerStub as never);
@@ -51,6 +58,8 @@ beforeEach(() => {
   fake.removed = [];
   configStub.getConfig.mockClear();
   configStub.updateConfig.mockClear();
+  moduleManagerStub.collectIpcHandlers.mockReset();
+  moduleManagerStub.collectIpcHandlers.mockReturnValue(configContributions);
   // Node 里没有 process.defaultApp，这里模拟「打包态」：只信任 file://
   Object.defineProperty(process, 'defaultApp', { configurable: true, value: false });
 });
@@ -115,9 +124,20 @@ describe('IpcManager', () => {
     warn.mockRestore();
   });
 
-  it('缺少 ConfigModule 时 setupHandlers 抛错（核心依赖不可缺失）', () => {
-    const brokenManager = new IpcManager(ipcMain as never, { getModule: () => undefined } as never);
+  it('模块贡献的通道同样经过 sender 校验', () => {
+    createManager().setupHandlers();
 
-    expect(() => brokenManager.setupHandlers()).toThrow(/ConfigModule/);
+    expect(() => invoke('config:get', trustedEvent('https://evil.example.com/'))).toThrow(
+      /Blocked IPC call/,
+    );
+  });
+
+  it('重复通道在启动时直接抛错（模块不能覆盖内核通道）', () => {
+    moduleManagerStub.collectIpcHandlers.mockReturnValue([
+      ...configContributions,
+      { channel: 'ping', handler: async () => 'hijacked' },
+    ]);
+
+    expect(() => createManager().setupHandlers()).toThrow(/Duplicate IPC channel: ping/);
   });
 });

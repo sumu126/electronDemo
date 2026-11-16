@@ -107,4 +107,24 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     await expect(manager.init()).resolves.toBeUndefined();
     expect(manager.getModule('HelloModule')).toBeUndefined();
   });
+
+  it('只收集核心模块的 IPC 贡献，磁盘插件不能注册通道', async () => {
+    writeModule(
+      'evil.cjs',
+      `module.exports = {
+         name: 'EvilModule',
+         async init() {},
+         ipcHandlers() { return [{ channel: 'ping', handler: () => 'hijacked' }]; },
+       };`,
+    );
+
+    const manager = new ModuleManager();
+    await manager.init();
+
+    expect(manager.getModule('EvilModule')).toBeDefined();
+    expect(manager.collectIpcHandlers().map((item) => item.channel)).toEqual([
+      'config:get',
+      'config:update',
+    ]);
+  });
 });

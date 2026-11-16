@@ -146,4 +146,12 @@ describe('ConfigModule', () => {
     expect(module.getConfig().theme).toBe('auto');
     expect(readConfig().appName).toBe('test-app');
   });
+
+  it('ipcHandlers 声明配置通道，供 IpcManager 聚合', async () => {
+    const module = await createModule();
+    const contributions = module.ipcHandlers();
+
+    expect(contributions.map((item) => item.channel)).toEqual(['config:get', 'config:update']);
+    expect(contributions.every((item) => typeof item.handler === 'function')).toBe(true);
+  });
 });

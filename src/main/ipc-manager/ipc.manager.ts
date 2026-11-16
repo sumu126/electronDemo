@@ -1,26 +1,16 @@
 import { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { SystemInfoHandler } from '../ipc/system.handler';
-import { ConfigHandler } from '../ipc/config.handler';
 import { WindowHandler } from '../ipc/window.handler';
 import { LogReportHandler } from '../ipc/log.handler';
 import { IPC_CHANNELS } from '@shared/constants';
 import { isTrustedSenderUrl } from '../ipc/sender';
+import type { IpcHandlerContribution } from '../ipc/ipc-contribution';
 import { ModuleManager } from '../managers/module.manager';
-import { ConfigModule } from '../modules/config.module';
-import { getLogger } from '../utils/app-logger';
-import type { IpcChannel } from '@shared/types';
-
-export interface IpcHandler {
-  // 通道名受 IpcChannel 约束：写错或写出未声明的通道会编译失败
-  channel: IpcChannel;
-  handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any> | any;
-}
 
 export class IpcManager {
   private ipcMain: IpcMain;
-  private handlers: Map<string, IpcHandler> = new Map();
+  private handlers: Map<string, IpcHandlerContribution> = new Map();
   private systemInfoHandler: SystemInfoHandler;
-  private configHandler: ConfigHandler | null = null;
   private windowHandler: WindowHandler;
   private logReportHandler: LogReportHandler;
   private moduleManager: ModuleManager;
@@ -35,44 +25,47 @@ export class IpcManager {
     this.logReportHandler = new LogReportHandler();
   }
 
-  public registerHandler(handler: IpcHandler): void {
+  public registerHandler(handler: IpcHandlerContribution): void {
+    // 通道不允许被覆盖：模块之间互相劫持会静默改变安全边界
+    if (this.handlers.has(handler.channel)) {
+      throw new Error(`Duplicate IPC channel: ${handler.channel}`);
+    }
+
     this.handlers.set(handler.channel, handler);
+
+    // 注册时把具体通道的签名擦成统一形态，类型校验留在贡献点声明处
+    const invoke = handler.handler as (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown;
+
     this.ipcMain.handle(handler.channel, (event, ...args) => {
       const senderUrl = event.senderFrame?.url ?? '';
       if (!isTrustedSenderUrl(senderUrl, Boolean(process.defaultApp))) {
         throw new Error(`Blocked IPC call from untrusted sender: ${senderUrl || 'unknown'}`);
       }
-      return handler.handler(event, ...args);
+      return invoke(event, ...args);
     });
   }
 
   public setupHandlers(): void {
-    // 初始化需要模块的处理器
-    this.initializeConfigHandler();
-
     // 注册通用IPC处理器
     this.registerPingHandler();
 
     // 注册系统信息处理器
     this.registerSystemInfoHandlers();
 
-    // 注册配置处理器
-    this.registerConfigHandlers();
-
     // 注册窗口操作处理器
     this.registerWindowHandlers();
 
     // 注册渲染进程日志上报处理器
     this.registerLogReportHandler();
+
+    // 模块自己声明的通道（核心模块），统一走 sender 校验
+    this.registerModuleHandlers();
   }
 
-  private initializeConfigHandler(): void {
-    // 获取配置模块实例
-    const configModule = this.moduleManager.getModule<ConfigModule>('ConfigModule');
-    if (!configModule) {
-      throw new Error('ConfigModule not found in module manager');
+  private registerModuleHandlers(): void {
+    for (const contribution of this.moduleManager.collectIpcHandlers()) {
+      this.registerHandler(contribution);
     }
-    this.configHandler = new ConfigHandler(configModule);
   }
 
   private registerPingHandler(): void {
@@ -89,27 +82,6 @@ export class IpcManager {
       channel: IPC_CHANNELS.SYSTEM_INFO,
       handler: (event: IpcMainInvokeEvent): Promise<any> => {
         return this.systemInfoHandler.getSystemInfo(event);
-      },
-    });
-  }
-
-  private registerConfigHandlers(): void {
-    if (!this.configHandler) {
-      getLogger().error('ConfigHandler not initialized');
-      return;
-    }
-
-    this.registerHandler({
-      channel: IPC_CHANNELS.CONFIG_GET,
-      handler: (event: IpcMainInvokeEvent): Promise<any> => {
-        return this.configHandler!.getConfig(event);
-      },
-    });
-
-    this.registerHandler({
-      channel: IPC_CHANNELS.CONFIG_UPDATE,
-      handler: (event: IpcMainInvokeEvent, updates: unknown): Promise<any> => {
-        return this.configHandler!.updateConfig(event, updates);
       },
     });
   }

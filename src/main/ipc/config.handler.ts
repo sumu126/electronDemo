@@ -1,6 +1,6 @@
 import { IpcMainInvokeEvent } from 'electron';
 import { AppConfig } from '@shared/types';
-import { ConfigModule } from '../modules/config.module';
+import type { ConfigModule } from '../modules/config.module';
 
 export class ConfigHandler {
   constructor(private readonly configModule: ConfigModule) {}

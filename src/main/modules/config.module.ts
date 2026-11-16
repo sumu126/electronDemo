@@ -11,6 +11,8 @@ import {
 } from '@shared/config/schema';
 import { AppConfig } from '@shared/types';
 import { APP_CONSTANTS } from '@shared/constants';
+import { ConfigHandler } from '../ipc/config.handler';
+import type { IpcHandlerContribution } from '../ipc/ipc-contribution';
 import { getLogger } from '../utils/app-logger';
 
 export class ConfigModule {
@@ -31,6 +33,19 @@ export class ConfigModule {
   public async destroy(): Promise<void> {
     // 保存配置并在销毁前执行清理工作
     await this.saveConfig();
+  }
+
+  /** 配置模块自己声明配置通道，IpcManager 只负责聚合与 sender 校验 */
+  public ipcHandlers(): IpcHandlerContribution[] {
+    const handler = new ConfigHandler(this);
+
+    return [
+      { channel: 'config:get', handler: (event) => handler.getConfig(event) },
+      {
+        channel: 'config:update',
+        handler: (event, updates) => handler.updateConfig(event, updates),
+      },
+    ];
   }
 
   private getDefaultConfig(): AppConfig {
