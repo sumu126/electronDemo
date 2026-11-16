@@ -292,6 +292,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 | 每项能力对应哪块源码、IPC 与配置项清单               | [功能详解](docs/框架功能详解.md)                                |
 | 抄一个完整功能（用户管理，含测试）                   | [API 实现示例](docs/API实现示例.md)                             |
 | 写插件 / 插件能力边界                                | [插件开发](docs/插件开发.md)                                    |
+| 接手这个项目 / 交接给别人                            | [交接文档](docs/交接.md)                                        |
 | 改了什么、为什么这么改                               | [路线图](docs/framework-roadmap.md) · [CHANGELOG](CHANGELOG.md) |
 
 ## License
