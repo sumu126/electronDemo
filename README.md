@@ -303,6 +303,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`
 - **`.env` 也会被复制到 `resources/.env`**（`build.mjs` 会先在缺失时从 `.env.example` 复制）：安装包自带一份默认配置，使用者可直接编辑安装目录下的 `.env` 后重启
+- AppImage 以只读方式挂载，无法直接修改包内 `resources/.env`；这类场景用 `ELECTRON_ENV_FILE` 指向外部 `.env`
 - 打包配置位于 `package.json` 的 `build` 字段（`win` / `linux` 两段）
 - Linux 的 `deb` 需要维护者信息，配置里用 `build.linux.maintainer`；换成你自己的团队即可
 - 图标要求：Windows 用 `.ico`，Linux 用**真正的 PNG**（≥512×512）。`assets/icon.png` 目前是从 256×256 的 ICO 放大而来，正式发布前建议换成设计稿导出的 512/1024 PNG
@@ -316,7 +317,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 - IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；导航守卫与 DevTools 守卫对所有创建的窗口生效（框架目前只建主窗口，多窗口 API 已按"无人使用"移除）
 - **不提供通用文件读写通道**：它能写进 `userData/modules`，与动态模块加载叠加等于给渲染进程留了持久化提权链
 - 配置写入通道已移除：渲染进程只能通过 `config:get` 读取，无法修改任何配置
-- **生产态收起 DevTools**：除非 `features.developerTools` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截
+- **生产态收起 DevTools**：除非 `FEATURE_DEVELOPER_TOOLS` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截
 - 渲染端日志上报有级别白名单、长度截断与限流，避免被异常循环刷爆日志
 - CSP 禁止 `unsafe-eval`，并显式关闭 `object-src` 与 `base-uri`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截
 - Web 权限请求与权限查询默认拒绝（`setPermissionRequestHandler` + `setPermissionCheckHandler`）
