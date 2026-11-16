@@ -684,3 +684,63 @@ git clone → npm ci（501 包，17s）→ build → typecheck → lint → test
 - 用例 131 → **148**（getModule +1、窗口事件 +11、启动链路 +5）
 - 覆盖率 statements 55.79% → **76.00%**，branches 60.77% → **75.68%**，functions 53.42% → **70.90%**，lines 56.16% → **76.58%**
 - e2e 在 Windows 上真实启动两次，重启后的窗口状态与配置均恢复
+
+## 26. 第十一轮：单实例锁残留/只读 lockfile 修复（2026-11-16）
+
+用户反馈：没有其它实例启动，`electron:dev` 仍然因单实例锁退出。复查后确认这不是「另一个实例」，而是
+Windows 上 `lockfile` 不可写导致的 `ACCESS_DENIED`。
+
+### 源码结论
+
+Chromium 创建锁文件时使用：
+
+```cpp
+CreateFile(..., GENERIC_WRITE, FILE_SHARE_READ, ..., CREATE_ALWAYS,
+           FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, ...);
+if (error != ERROR_SHARING_VIOLATION) {
+  break;  // 除「文件被占用」外立即中止
+}
+```
+
+只有 `ERROR_SHARING_VIOLATION` 才会被当作另一个实例并重试；`ERROR_ACCESS_DENIED (0x5)` 直接中止。
+只读属性、ACL、delete-pending 都会表现为 0x5，和「已有实例」在现象上完全一样。
+
+### 受控复现
+
+| 实验                                                         | 结果                                      |
+| ------------------------------------------------------------ | ----------------------------------------- |
+| 临时 userData + 只读 `lockfile`，无其它实例                  | 精确复现 `0x5` + 我们的「另一个实例」误报 |
+| 对只读 `lockfile` 直接 unlink                                | `EPERM`                                   |
+| `chmod 666` 后 unlink                                        | 成功                                      |
+| 用 Chromium 同款 `FILE_SHARE_READ` 持有 `lockfile` 后 unlink | `EBUSY`（不会误删活实例的锁）             |
+
+### 修复
+
+1. 新增 `main/utils/singleton-lock.ts`：请求锁之前安全清理 Windows 残留/只读 `lockfile`
+   - 能 unlink → 残留，删除
+   - `EPERM` → 清只读位后重试
+   - `EBUSY` → 活实例持有，不删除
+   - 其它 → 权限/安全软件，返回 `unavailable`
+2. `main/index.ts`：锁失败按 probe（`held` / `unavailable` / `missing` / `removed` / `skipped`）
+   输出准确原因，并以退出码 21 结束
+3. `scripts/dev.mjs`：
+   - 开发态使用 `node_modules/.cache/electron-dev-user-data`，避免与正式包、其它克隆共用锁
+   - 转发 Electron stdout/stderr，Windows 下不再丢失启动错误
+   - 退出码 21 时打印锁冲突提示、userData 和 `main.log` 尾部
+4. `scripts/smoke.mjs`：
+   - 启动前预置只读 `lockfile`，断言应用仍能启动
+   - 首实例运行中启动第二实例，断言退出码 21
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test:coverage` / `build` / `smoke` / `e2e` 全绿
+- 用例 148 → **154**（singleton-lock 6 条）
+- 覆盖率 statements **75.45%** / branches **75.39%** / functions **71.30%** / lines **75.99%**
+- 手动验证：`electron:dev` 正常驻留，日志显示独立 userData；人为占锁时输出 `probe: held`、日志尾部并以 21 退出
+
+### 边界
+
+- `EBUSY` 不删除，仍然按「已有实例」处理
+- ACL/安全软件导致的不可写只能准确报告，不能自动绕过
+- Linux/macOS 的锁机制不同，不做 lockfile 清理
+- 下游应用仍应修改 `package.json` 的 `name` / `productName` / `appId`，否则打包后共用 userData

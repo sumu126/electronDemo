@@ -55,6 +55,12 @@ npm run electron:dev
 
 > **启动报 `Cannot read properties of undefined (reading 'requestSingleInstanceLock')`**：当前终端把 `ELECTRON_RUN_AS_NODE=1` 传给了子进程（VS Code 等 Electron 系终端常见），Electron 会被当成普通 Node 执行。`electron:dev` 已主动清除该变量；直接 `npm run electron:start` 时如遇到，PowerShell `$env:ELECTRON_RUN_AS_NODE=''`，cmd `set ELECTRON_RUN_AS_NODE=`。
 
+> **`electron:dev` 启动后 Electron 立刻退出（退出码 21）**：单实例锁没有拿到。开发态使用独立 userData（`node_modules/.cache/electron-dev-user-data`），不会和正式包、其它克隆互相占用；Windows 上残留或只读的 `lockfile` 会在启动前自动清理。若仍失败，终端会打印 `probe` 和 `main.log` 尾部：
+>
+> - `probe=held`：同一 userData 下已有实例（常见是关窗后缩到托盘），先从托盘退出
+> - `probe=unavailable`：`lockfile` 无法删除/创建，检查 userData 权限或安全软件
+> - `probe=skipped`：Linux/macOS 不做 lockfile 清理，通常是已有实例
+
 ### 常用命令
 
 ```bash
@@ -71,7 +77,7 @@ npm run format:check     # Prettier 校验（不写文件）
 npm test                 # Vitest
 npm run test:coverage    # Vitest + 覆盖率阈值
 npm run smoke            # 真机冒烟：启动 Electron 校验配置与日志落盘
-npm run e2e              # 真实交互 e2e：驱动界面改配置、切语言，校验整条 IPC 链路
+npm run e2e              # 真实交互 e2e：改配置、切语言，并重启验证窗口状态恢复
 ```
 
 `npm install` 会通过 `prepare` 自动安装 pre-commit 钩子，提交时依次跑 typecheck / lint / format:check / test / build；确实要跳过时用 `SKIP_GATES=1 git commit ...`。
@@ -111,6 +117,17 @@ docs/                         # 文档与实施记录
 ```
 
 ## 开发约定
+
+### 基于框架新建应用
+
+先把应用身份改成自己的，否则会和其它应用共用 userData 和单实例锁：
+
+- `package.json` 的 `name`
+- `build.productName`、`build.appId`
+- `build.linux.desktopName`
+- `APP_CONSTANTS.APP_ID` / `NAME`
+
+这些值决定 `%APPDATA%` 下的 userData 目录，以及 Windows 的任务栏 / 通知身份。
 
 ### 新增页面
 
