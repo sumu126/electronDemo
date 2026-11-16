@@ -638,7 +638,7 @@ git clone → npm ci（501 包，17s）→ build → typecheck → lint → test
 ### 验证结果
 
 - `typecheck` / `lint` / `format:check` / `test:coverage` / `build` / `smoke` / `e2e` 全绿
-- 用例 128 → **131**（IpcManager +2、ConfigModule +1、ModuleManager +1，替换 1 条旧用例）
+- 用例 128 → **131**（IpcManager 净 +1：删 1 加 2；ConfigModule +1；ModuleManager +1）
 - 覆盖率 statements **55.79%** / branches **60.77%** / functions **53.42%** / lines **56.16%**
 - e2e 首次运行时断言通过但 Windows 临时目录清理报 `EBUSY`，已给清理加 5 次重试（`88964e8`），复跑通过
 
