@@ -83,7 +83,8 @@ npm run e2e              # 真实交互 e2e：驱动界面改配置、切语言�
 ```
 src/
 ├── main/                     # 主进程
-│   ├── index.ts              # 应用入口、生命周期、全局异常
+│   ├── index.ts              # 入口：单实例锁、进程级异常
+│   ├── app.ts                # 启动序列与生命周期（顺序不可随意调整）
 │   ├── ipc/                  # IPC 处理器与 sender 校验
 │   ├── ipc-manager/          # 通道注册与管理
 │   ├── managers/             # 窗口、模块注册表、模块加载器、窗口状态
@@ -243,9 +244,9 @@ npm run build
 
 CI 额外做三件事（已在 2026-11-15 首跑，ubuntu 全绿）：
 
-- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 51% / branches 54% / functions 48% / lines 51%）
+- 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 72% / branches 72% / functions 67% / lines 72%）
 - 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
-- 两个平台各跑一次 `npm run e2e`：驱动界面点开配置面板、改主题、切语言，校验整条 IPC 链路（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
+- 两个平台各跑一次 `npm run e2e`：驱动界面点开配置面板、改主题、切语言，再重启一次验证窗口状态与配置恢复（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
 
 ## 打包
 

@@ -644,5 +644,43 @@ git clone → npm ci（501 包，17s）→ build → typecheck → lint → test
 
 ### 仍未处理
 
-- 主进程启动链路与窗口事件仍无测试
-- e2e 仍只有一条主流程（配置保存 / 主题 / 语言），缺"重启后窗口状态恢复"
+- 主进程启动链路与窗口事件仍无测试（第十轮已补，见第 25 节）
+- e2e 仍只有一条主流程（配置保存 / 主题 / 语言），缺"重启后窗口状态恢复"（第十轮已补，见第 25 节）
+
+## 25. 第十轮：类型守卫、启动/窗口测试与 e2e 重启恢复（2026-11-16）
+
+交接文档里最后三个遗留项，全部收口。
+
+### 1. getModule 去掉无校验强转
+
+- `ModuleRegistry.get(name)` 只返回 `Module | undefined`
+- `ModuleManager.getModule(name, guard)` 用调用方提供的运行时类型守卫校验，名字与类型对不上返回 `undefined`
+- `ConfigModule` 导出 `isConfigModule`；主进程按守卫取模块，不再 `getModule<ConfigModule>()`
+
+### 2. 启动链路可测试
+
+- `App` 从 `main/index.ts` 移到 `main/app.ts`；入口只保留单实例锁、进程级异常与二次实例激活
+- 新增 `main/app.test.ts`：断言启动顺序（模块 → 配置注入 → IPC → 权限 → 菜单 → 建窗）、
+  菜单开关跟随配置、`before-quit` 先清理模块再 flush/quit、`window-all-closed`、`activate` 重建窗口
+
+### 3. 窗口事件测试
+
+- 新增 `managers/window.manager.test.ts`（11 条）：`ready-to-show` 显示与最大化、加载失败兜底、
+  关闭到托盘并立即落盘、退出流程不拦截、托盘不可用时允许关闭、resize 防抖 300ms、
+  `closed` 取消计时器、站外导航拦截、`window.open` 仅放行 https、生产态 DevTools 拦截
+
+### 4. e2e 真实重启
+
+- 预置窗口状态 → 首次启动校验尺寸 → 改主题/语言 → 杀掉进程 → 重启 → 校验窗口尺寸、主题与语言
+- 窗口尺寸断言允许 16px 误差：Windows 的 `outerWidth/outerHeight` 与 BrowserWindow bounds 差 7px 左右
+
+### 5. 覆盖率门禁上调
+
+- 51 / 54 / 48 / 51 → **72 / 72 / 67 / 72**
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test:coverage` / `build` / `smoke` / `e2e` 全绿
+- 用例 131 → **148**（getModule +1、窗口事件 +11、启动链路 +5）
+- 覆盖率 statements 55.79% → **76.00%**，branches 60.77% → **75.68%**，functions 53.42% → **70.90%**，lines 56.16% → **76.58%**
+- e2e 在 Windows 上真实启动两次，重启后的窗口状态与配置均恢复
