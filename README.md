@@ -61,6 +61,8 @@ npm run electron:dev
 > - `probe=unavailable`：`lockfile` 无法删除/创建，检查 userData 权限或安全软件
 > - `probe=skipped`：Linux/macOS 不做 lockfile 清理，通常是已有实例
 
+> **外置盘上 Electron 以 `0x80000003` 退出**：部分外置盘/非系统盘路径下 Chromium 沙箱无法初始化，`main.log` 可能为空。`electron:dev` 首次遇到该退出码会自动加 `--no-sandbox` 重试一次，仅影响开发态；生产构建仍启用沙箱。
+
 ### 常用命令
 
 ```bash

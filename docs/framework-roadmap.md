@@ -738,6 +738,21 @@ if (error != ERROR_SHARING_VIOLATION) {
 - 覆盖率 statements **75.45%** / branches **75.39%** / functions **71.30%** / lines **75.99%**
 - 手动验证：`electron:dev` 正常驻留，日志显示独立 userData；人为占锁时输出 `probe: held`、日志尾部并以 21 退出
 
+### 补充：外置盘沙箱崩溃（0x80000003）
+
+用户把项目放到 `S:` 外置盘后，Electron 没有任何日志就以 `2147483651` 退出。对照实验结果：
+
+| 组合                                          | 结果                                 |
+| --------------------------------------------- | ------------------------------------ |
+| S: 的 Electron + S: userData，不加沙箱参数    | `0x80000003` 原生退出，main.log 为空 |
+| S: 的 Electron + S: userData + `--no-sandbox` | 正常启动                             |
+| F:（本地盘）的 Electron + S: userData         | 正常启动                             |
+| F: 的 Electron + C: userData                  | 正常启动                             |
+
+结论：不是 userData 路径或应用代码问题，而是 Chromium 沙箱在部分外置盘路径下初始化失败。
+`dev.mjs` 现在首次遇到 `2147483651` 时自动加 `--no-sandbox` 重试一次，并在后续重启中复用；
+仅影响开发态，生产构建仍启用沙箱。S: 克隆上已实测：首次崩溃 → 重试 → 正常启动。
+
 ### 边界
 
 - `EBUSY` 不删除，仍然按「已有实例」处理
