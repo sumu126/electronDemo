@@ -63,10 +63,12 @@ class App {
     this.ipcManager.setupHandlers();
     const ipcReadyAt = Date.now();
 
-    // 默认拒绝所有 Web 权限请求（摄像头、麦克风、通知等按需再开放）
+    // 默认拒绝所有 Web 权限（摄像头、麦克风、通知等按需再开放）。
+    // request 管弹窗授权，check 管同步查询；只设前者时，部分 API 仍可能拿到放行结果。
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
       callback(false);
     });
+    session.defaultSession.setPermissionCheckHandler(() => false);
 
     // 应用菜单用原生 role，菜单文字跟随系统语言；开发者工具项由配置决定
     applyApplicationMenu({

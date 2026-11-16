@@ -1,15 +1,22 @@
-import { BrowserWindow, screen, Tray, Menu, nativeImage, app, shell } from 'electron';
+import { BrowserWindow, screen, Tray, Menu, nativeImage, nativeTheme, app, shell } from 'electron';
+import type { NativeImage } from 'electron';
 import fs from 'fs';
 import { join } from 'path';
 
-import type { WindowConfig } from '@shared/types';
+import type { AppConfig, WindowConfig } from '@shared/types';
 import { getMessages, type AppMessages } from '@shared/i18n';
 import { isTrustedSenderUrl, DEV_SERVER_URL } from '../ipc/sender';
 import { ConfigModule } from '../modules/config.module';
 import { getLogger } from '../utils/app-logger';
 import { isDevtoolsShortcut } from './devtools-shortcut';
 import { pickDecodableImage } from './tray-icon';
-import { createWindowStateSnapshot, resolveCloseAction, resolveLoadTarget } from './window-policy';
+import {
+  createWindowStateSnapshot,
+  resolveCloseAction,
+  resolveLoadTarget,
+  resolveWindowBackgroundColor,
+  resolveWindowIconCandidates,
+} from './window-policy';
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowState } from './window-state';
 
 export class WindowManager {
@@ -41,6 +48,8 @@ export class WindowManager {
       screen.getAllDisplays().map((display) => display.workArea),
     );
 
+    const windowIcon = this.pickWindowIcon();
+
     this.mainWindow = new BrowserWindow({
       width: initialState.width,
       height: initialState.height,
@@ -52,16 +61,19 @@ export class WindowManager {
       frame: true, // 保留窗口边框和系统控制按钮
       autoHideMenuBar: true, // 隐藏默认菜单栏
       show: false, // 等首帧渲染完成再显示，避免启动时白屏闪烁
+      // 首帧背景跟随主题：深色主题下启动不再先闪一帧白底
+      backgroundColor: resolveWindowBackgroundColor(
+        this.configModule?.getValue<AppConfig['theme']>('theme'),
+        nativeTheme.shouldUseDarkColors,
+      ),
+      ...(windowIcon ? { icon: windowIcon } : {}),
       webPreferences: {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
       },
-      icon: join(app.getAppPath(), 'assets/icon.ico'), // 使用ico图标
     });
-
-    this.mainWindow.setBackgroundColor('#ffffff'); // 匹配你的应用主题色
 
     // 首帧就绪后再显示：启动过程不再出现空白窗口
     this.mainWindow.once('ready-to-show', () => {
@@ -216,6 +228,18 @@ export class WindowManager {
 
   public getMainWindow(): BrowserWindow | null {
     return this.mainWindow;
+  }
+
+  // 窗口图标同样按平台取第一个能解码的候选：Linux 上 ICO 可能得到空图像
+  private pickWindowIcon(): NativeImage | null {
+    const candidates = resolveWindowIconCandidates(process.platform).map((iconPath) =>
+      join(app.getAppPath(), iconPath),
+    );
+    const picked = pickDecodableImage(candidates, (iconPath) =>
+      fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null,
+    );
+
+    return picked?.image ?? null;
   }
 
   // 托盘与通知文案跟随配置语言

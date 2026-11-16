@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createWindowStateSnapshot, resolveCloseAction, resolveLoadTarget } from './window-policy';
+import {
+  createWindowStateSnapshot,
+  resolveCloseAction,
+  resolveLoadTarget,
+  resolveWindowBackgroundColor,
+  resolveWindowIconCandidates,
+} from './window-policy';
 
 describe('resolveCloseAction', () => {
   it('正常关闭且托盘可用时藏到托盘', () => {
@@ -49,5 +55,25 @@ describe('createWindowStateSnapshot', () => {
       y: 20,
       maximized: true,
     });
+  });
+});
+
+describe('resolveWindowBackgroundColor', () => {
+  it('显式主题优先于系统配色', () => {
+    expect(resolveWindowBackgroundColor('dark', false)).toBe('#16181d');
+    expect(resolveWindowBackgroundColor('light', true)).toBe('#f5f5f5');
+  });
+
+  it('auto 与未配置时跟随系统配色', () => {
+    expect(resolveWindowBackgroundColor('auto', true)).toBe('#16181d');
+    expect(resolveWindowBackgroundColor('auto', false)).toBe('#f5f5f5');
+    expect(resolveWindowBackgroundColor(undefined, true)).toBe('#16181d');
+  });
+});
+
+describe('resolveWindowIconCandidates', () => {
+  it('Linux 优先 PNG，其它平台优先 ICO', () => {
+    expect(resolveWindowIconCandidates('linux')[0]).toBe('assets/icon.png');
+    expect(resolveWindowIconCandidates('win32')[0]).toBe('assets/icon.ico');
   });
 });

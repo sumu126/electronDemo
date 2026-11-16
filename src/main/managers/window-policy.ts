@@ -1,5 +1,5 @@
 import { join } from 'path';
-import type { WindowConfig } from '@shared/types';
+import type { AppConfig, WindowConfig } from '@shared/types';
 
 export type CloseAction = 'hide' | 'close';
 
@@ -52,4 +52,21 @@ export function createWindowStateSnapshot(
     y: bounds.y,
     maximized,
   };
+}
+
+/** 与 styles/theme.css 的 --color-bg 对齐，避免深色主题启动时先闪一帧白底 */
+export function resolveWindowBackgroundColor(
+  theme: AppConfig['theme'] | undefined,
+  systemPrefersDark: boolean,
+): string {
+  const isDark = theme === 'dark' || (theme !== 'light' && systemPrefersDark);
+
+  return isDark ? '#16181d' : '#f5f5f5';
+}
+
+/** 窗口图标的候选顺序：Linux 优先真 PNG（ICO 可能解不出来），其余平台优先 ICO */
+export function resolveWindowIconCandidates(platform: NodeJS.Platform): readonly string[] {
+  return platform === 'linux'
+    ? ['assets/icon.png', 'assets/icon.ico']
+    : ['assets/icon.ico', 'assets/icon.png'];
 }
