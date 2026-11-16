@@ -762,6 +762,8 @@ if (error != ERROR_SHARING_VIOLATION) {
 
 ## 27. 第十二轮：可配置沙箱（2026-11-16）
 
+> 本节方案已被第 28 节取代：配置源改为 `.env`，`config.json`、`early-config.ts` 与 `config:update` 均已删除。
+
 ### 背景
 
 外置盘上 Chromium 沙箱初始化失败时，应用会以 `0x80000003` 直接退出，开发态已能自动降级，但使用者没有把「这个环境就是不能开沙箱」固化成配置的手段。老框架的做法是直接 `--no-sandbox` + `sandbox: false`，新框架需要默认安全，同时允许显式关闭。
@@ -789,3 +791,39 @@ if (error != ERROR_SHARING_VIOLATION) {
 
 - 该开关只从本地配置文件读取，不提供设置页写入；修改后需重启
 - 关闭沙箱只建议在外置盘等无法初始化沙箱的环境使用；生产环境保持默认 `true`
+
+## 28. 第十三轮：`.env` 成为唯一配置源（2026-11-16）
+
+### 背景
+
+第十二轮把沙箱开关放进 `userData/config.json`，方向错了：使用方要求**项目配置必须是仓库根目录的 `.env`**，且不接受「配置一半在仓库、一半在用户目录」的双数据源。于是把配置层整体改成只读 `.env`，`config.json` 彻底移除。
+
+### 决策
+
+- `.env` **完全取代** `config.json`：唯一来源，启动时读取一次
+- 仓库提交 `.env.example`，本地复制为 `.env`；`.gitignore` 忽略 `.env` / `.env.*` 但显式放行 `.env.example`
+- 运行时不再保存任何配置：窗口尺寸/位置、主题、语言都只在启动时从 `.env` 读取，运行中不写回
+- 设置页改为**只读展示**，提示用户编辑 `.env` 并重启
+
+### 改动
+
+1. 新增 `src/main/utils/env.ts`：`.env` 解析（BOM / 注释 / 空行 / `export` / 引号 / 行内注释）、路径解析（`ELECTRON_ENV_FILE` → 开发态 `cwd/.env` → 打包态 `resources/.env`）、`readSandboxEnabled`
+2. 新增 `src/shared/config/from-env.ts`：`.env` → `AppConfig`，非法值 warning 后回退默认值
+3. 重写 `ConfigModule`：构造时读取 `.env`，只声明 `config:get`；删除 `saveConfig` / `updateConfig` / `setValue` / 写队列 / `configPath`
+4. 删除 `src/main/utils/early-config.ts`、`src/shared/config/schema.ts` 及对应测试；移除 `config:update`（constants / types / preload 白名单 / ipc.manager 同步）
+5. 窗口状态不再持久化：删除 resize/move 防抖落盘与 `createWindowStateSnapshot`；按 `.env` 的 `WINDOW_*` 建窗
+6. 托盘通知改为会话内状态：默认本次运行只提示一次；`TRAY_BALLOON_NOTIFICATION_ENABLED=true` 时每次提示（不再写 `hasShownFirstTimeNotice`）
+7. 渲染端 `config.store` / `useConfig` 只保留加载与读取；`ConfigPanel` 只读展示主题、语言、开发者工具与沙箱
+8. 构建与脚本：`scripts/ensure-env.mjs` 在 `.env` 缺失时从模板复制；`build.mjs`、`dev.mjs` 引入；`dev.mjs` 监听根目录 `.env` 并自动重启 Electron；`package.json` 的 `extraResources` 把 `.env` 复制到安装包 `resources/.env`
+9. `smoke.mjs` / `e2e.mjs` 改用临时 `.env` + `ELECTRON_ENV_FILE`：smoke 断言 `Project config loaded from`；e2e 先验证首启配置生效与设置页只读，再改 `.env` 重启验证尺寸/主题/语言
+
+### 验证结果
+
+- 五道门禁 + smoke + e2e 全绿
+- 新增 `env.test.ts`（解析、路径解析、加载、沙箱判定）与 `from-env.test.ts`（完整映射、默认值、非法值 warning、布尔别名）
+
+### 边界
+
+- `.env` 只在启动时读取，运行时改动不生效；`electron:dev` 会自动重启，生产环境需手动重启
+- `.env` 会随安装包分发一份默认值；使用者改安装目录下 `resources/.env` 后重启生效
+- 不再支持从界面修改任何配置——这是刻意的取舍，避免「设置页显示已保存、重启后回退」的假象

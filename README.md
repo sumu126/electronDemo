@@ -1,6 +1,6 @@
 # Electron + Vue3 快速开发框架
 
-一个用于**快速搭建桌面应用**的脚手架：克隆后即可开发，不需要先补基础设施。框架提供主进程 / 预加载 / 渲染进程分层、类型安全 IPC、配置与窗口状态、路由、模块系统、日志、质量门禁和安全默认值；业务本身由使用方在其上叠加。
+一个用于**快速搭建桌面应用**的脚手架：克隆后即可开发，不需要先补基础设施。框架提供主进程 / 预加载 / 渲染进程分层、类型安全 IPC、`.env` 项目配置、路由、模块系统、日志、质量门禁和安全默认值；业务本身由使用方在其上叠加。
 
 > 定位：快速开发框架，不是完整业务应用。框架**不做自动更新**（明确的非目标），也不绑定发布渠道或具体 UI 组件库。
 
@@ -8,16 +8,16 @@
 
 - **三进程分层**：`main` / `preload` / `renderer` / `shared`，职责清晰
 - **类型安全 IPC**：通道白名单 + `IpcInvokeMap` 参数/返回类型 + 编译期白名单完整性断言 + sender 来源校验
-- **单一配置源**：主进程落盘 `userData/config.json`（schema 校验 + 原子写），渲染端通过 Pinia store 读写
-- **主题与语言**：`theme`（light/dark/auto，跟随系统）与 `language`（zh-CN/en-US）由配置驱动，颜色走 CSS 变量
-- **窗口状态持久化**：位置、尺寸、最大化状态自动保存与恢复，离屏坐标自动丢弃
+- **单一配置源**：项目根目录的 `.env`（提交 `.env.example`，本地复制）是唯一配置来源；主进程启动时读取并校验，渲染端通过只读 Pinia store 展示
+- **主题与语言**：`THEME`（light/dark/auto，跟随系统）与 `LANGUAGE`（zh-CN/en-US）由 `.env` 驱动，颜色走 CSS 变量
+- **窗口尺寸与位置**：`WINDOW_*` 由 `.env` 指定，启动时按配置建窗，离屏坐标自动丢弃
 - **路由骨架**：`vue-router` 4 + hash 模式 + 404 兜底，打包后 `file://` 可直接工作
 - **错误边界**：页面级异常被 `AppErrorBoundary` 兜住，不整页白屏
 - **模块系统**：核心模块可通过 `ipcHandlers()` 声明自己的 IPC 通道；`userData/modules` 下的 CommonJS 模块可动态加载，单个模块启动失败不影响启动
 - **日志与异常**：主进程异步文件日志（退出前刷盘，按 5 MB 轮转保留 3 份）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
 - **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
 - **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
-- **安全默认**：`sandbox` 默认开启（可在 `config.json` 的 `security.sandboxEnabled` 关闭）、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
+- **安全默认**：`sandbox` 默认开启（可在 `.env` 里设 `SECURITY_SANDBOX_ENABLED=false` 关闭）、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
 
 ## 技术栈
 
@@ -48,8 +48,11 @@ CI 在 ubuntu（xvfb）与 windows 两个平台各跑一遍：typecheck / lint /
 
 ```bash
 npm install
+cp .env.example .env     # Windows: copy .env.example .env
 npm run electron:dev
 ```
+
+**项目配置只有一个来源：根目录的 `.env`。** 仓库只提交模板 `.env.example`；`npm install` / `npm run dev` / `npm run build` 会在 `.env` 缺失时自动复制一份，也可以手动复制后按需修改。改完 `.env` 需要重启应用（`electron:dev` 会自动重启 Electron）。
 
 `electron:dev` 会构建主进程、启动 Vite、等 `5173` 就绪后再拉起 Electron；之后 `src/main`、`src/preload`、`src/shared` 的改动会**自动重建主进程并重启 Electron**，渲染进程仍然走 Vite 热更新。
 
@@ -63,7 +66,7 @@ npm run electron:dev
 
 > **外置盘上 Electron 以 `0x80000003` 退出**：部分外置盘/非系统盘路径下 Chromium 沙箱无法初始化，`main.log` 可能为空。`electron:dev` 首次遇到该退出码会自动加 `--no-sandbox` 重试一次，仅影响开发态；生产构建仍启用沙箱。
 >
-> **想永久关闭沙箱**：编辑 `userData/config.json`，设置 `"security": { "sandboxEnabled": false }` 后重启。开发态路径是 `node_modules/.cache/electron-dev-user-data/config.json`；外置盘首次启动可以先让 dev 自动降级跑起来，再改这个文件。该开关只从本地配置文件读取，设置页/渲染进程不能修改；关闭会降低安全性，只建议在外置盘等沙箱无法启动的环境使用。
+> **想永久关闭沙箱**：编辑项目根目录的 `.env`，设置 `SECURITY_SANDBOX_ENABLED=false` 后重启。开发态也可以直接改项目根目录 `.env`（`electron:dev` 监听到变化会自动重启 Electron）。该开关只从 `.env` 读取，设置页/渲染进程不能修改；关闭会降低安全性，只建议在外置盘等沙箱无法启动的环境使用。
 
 ### 常用命令
 
@@ -80,8 +83,8 @@ npm run format           # Prettier 格式化
 npm run format:check     # Prettier 校验（不写文件）
 npm test                 # Vitest
 npm run test:coverage    # Vitest + 覆盖率阈值
-npm run smoke            # 真机冒烟：启动 Electron 校验配置与日志落盘
-npm run e2e              # 真实交互 e2e：改配置、切语言，并重启验证窗口状态恢复
+npm run smoke            # 真机冒烟：启动 Electron 校验 .env 加载与日志落盘
+npm run e2e              # 真实交互 e2e：改 .env 后重启，验证窗口尺寸/主题/语言生效
 ```
 
 `npm install` 会通过 `prepare` 自动安装 pre-commit 钩子，提交时依次跑 typecheck / lint / format:check / test / build；确实要跳过时用 `SKIP_GATES=1 git commit ...`。
@@ -97,9 +100,9 @@ src/
 │   ├── app.ts                # 启动序列与生命周期（顺序不可随意调整）
 │   ├── ipc/                  # IPC 处理器与 sender 校验
 │   ├── ipc-manager/          # 通道注册与管理
-│   ├── managers/             # 窗口、模块注册表、模块加载器、窗口状态
+│   ├── managers/             # 窗口、模块注册表、模块加载器
 │   ├── modules/              # 核心模块（配置）
-│   └── utils/                # 主进程工具（Logger）
+│   └── utils/                # 主进程工具（.env 加载、Logger）
 ├── preload/                  # contextBridge 暴露的安全 API（通道白名单）
 ├── renderer/                 # 渲染进程
 │   ├── router/               # 路由表（hash 模式 + 404 兜底）
@@ -188,24 +191,25 @@ module.exports = {
 
 ### 主题与语言
 
-```ts
-await configStore.updateConfig({ theme: 'dark' }); // light / dark / auto
-await configStore.updateConfig({ language: 'en-US' }); // zh-CN / en-US
+```dotenv
+# .env
+THEME=dark        # light / dark / auto
+LANGUAGE=en-US    # zh-CN / en-US
 ```
 
-- `theme`：`applyTheme` 只切换 `<html data-theme>`，颜色全部来自 `src/renderer/styles/theme.css` 的 CSS 变量；`auto` 会跟随系统配色变化
-- `language`：渲染端用 `useI18n()`，主进程用 `getMessages(locale)`，两边共用 `src/shared/i18n` 的同一份文案
-- 新增语言：在 `src/shared/i18n` 加一份 `AppMessages`，再补进 `SUPPORTED_LOCALES`；`schema` 会自动放行
+- `THEME`：`applyTheme` 只切换 `<html data-theme>`，颜色全部来自 `src/renderer/styles/theme.css` 的 CSS 变量；`auto` 会跟随系统配色变化
+- `LANGUAGE`：渲染端用 `useI18n()`，主进程用 `getMessages(locale)`，两边共用 `src/shared/i18n` 的同一份文案
+- 新增语言：在 `src/shared/i18n` 加一份 `AppMessages`，再补进 `SUPPORTED_LOCALES`；`.env` 里写非法值会回退默认值并在日志里给出 warning
 - 新增主题色：只改 `theme.css` 里的变量，不要在组件里写死颜色
 
 ### 新增一个功能开关
 
-框架内置两个开关：`features.developerTools`（功能开关）和 `security.sandboxEnabled`（启动安全开关）。前者按下面的五步加自己的功能开关；后者只从 `config.json` 读取，不走 `config:update`，也不要在设置页暴露——否则渲染进程被 XSS 后可以关掉下一次启动的沙箱。
+框架内置两个开关：`FEATURE_DEVELOPER_TOOLS`（功能开关）和 `SECURITY_SANDBOX_ENABLED`（启动安全开关）。前者按下面的步骤加自己的功能开关；后者只在启动阶段读取，设置页/渲染进程不能修改——否则渲染进程被 XSS 后可以关掉下一次启动的沙箱。
 
 1. `src/shared/types/index.ts`：在 `FeatureFlags` 加字段
 2. `src/shared/config/defaults.ts`：给默认值（主进程与渲染进程共用这一份）
-3. `src/shared/config/schema.ts`：加 `'boolean'` 白名单（漏加会被拒绝写入）
-4. `src/renderer/components/ConfigPanel.vue`：加复选框，`handleFeatureToggle('yourFlag', ...)`
+3. `src/shared/config/from-env.ts`：映射对应的 `.env` 键（含非法值回退与 warning）
+4. `.env.example`：补上键名与默认值，作为使用方的配置模板
 5. 消费：主进程 `configModule.getValue<boolean>('features.yourFlag')`，渲染端 `configStore.config.features.yourFlag`
 
 文案在 `src/shared/i18n` 补中英文两条即可。
@@ -217,23 +221,30 @@ await configStore.updateConfig({ language: 'en-US' }); // zh-CN / en-US
 ```ts
 const configStore = useConfigStore();
 await configStore.ensureLoaded();
-configStore.config; // 当前配置
-await configStore.updateConfig({ theme: 'dark' });
+configStore.config; // 当前配置（只读）
 ```
 
+- **唯一来源是项目根目录的 `.env`**；仓库跟踪 `.env.example`，本地复制为 `.env`（`.gitignore` 忽略 `.env` 与 `.env.*`，但显式放行 `.env.example`）
+- 加载器在 `src/main/utils/env.ts`：支持注释、空行、`export` 前缀与引号，不引第三方依赖；路径可用 `ELECTRON_ENV_FILE` 覆盖（测试/CI 用）
+- 映射与校验在 `src/shared/config/from-env.ts`：非法枚举/数字/布尔不会导致启动失败，记录 warning 后回退默认值
 - 默认值统一在 `src/shared/config/defaults.ts`
-- 结构契约在 `src/shared/config/schema.ts`：`config:update` 只接受 schema 内的键与合法类型，未知键、错误类型、`__proto__` 之类原型键一律拒绝并返回带键路径的错误
-- 渲染端不再使用 `localStorage`
-- 主进程落盘位置：`userData/config.json`（串行化 + 临时文件 rename 原子写入）
-- 旧版本残留的未知键会在加载时裁剪，首次裁剪前备份到 `config.json.bak`
-- 窗口标题取自配置的 `appName`，构建脚本不再改写 `index.html`
-- `features.developerTools` 控制开发态启动时是否自动打开 DevTools
-- `security.sandboxEnabled` 默认 `true`。设为 `false` 时，主进程会在 `app.whenReady` 之前加 `--no-sandbox`，**重启生效**；该键只从 `userData/config.json` 读取，`config:update` 会丢弃它，渲染进程无法修改
+- 配置是**只读**的：没有 `config:update`，也没有 `config.json` 落盘；设置页只展示当前值并提示去改 `.env`
+- 窗口标题取自配置的 `appName`（`APP_NAME`），构建脚本不再改写 `index.html`
+- `FEATURE_DEVELOPER_TOOLS` 控制开发态启动时是否自动打开 DevTools
+- `SECURITY_SANDBOX_ENABLED` 默认 `true`。只有显式 `false` 才会在 `app.whenReady` 之前加 `--no-sandbox`，**重启生效**；渲染进程无法修改
 - 主进程支持 `ELECTRON_USER_DATA_DIR` 覆盖 userData 目录（便携模式与 CI 冒烟用）
 
-### 窗口状态
+### 窗口尺寸与位置
 
-无需额外代码，框架自动保存/恢复 `window.width/height/x/y/maximized`；显示器变化导致的离屏坐标会被丢弃。
+```dotenv
+WINDOW_WIDTH=1200
+WINDOW_HEIGHT=800
+WINDOW_X=              # 留空则居中
+WINDOW_Y=
+WINDOW_MAXIMIZED=false
+```
+
+框架按 `.env` 建窗；显示器变化导致的离屏坐标会被丢弃。窗口运行时的移动/缩放**不会写回配置**——想固定尺寸就直接改 `.env` 并重启。
 
 ### 日志
 
@@ -267,8 +278,8 @@ npm run build
 CI 额外做三件事（已在 2026-11-15 首跑，ubuntu 全绿）：
 
 - 用 `npm run test:coverage` 跑覆盖率阈值（当前基线：statements 72% / branches 72% / functions 67% / lines 72%）
-- 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验配置与日志落盘——避免「门禁全绿但应用起不来」
-- 两个平台各跑一次 `npm run e2e`：驱动界面点开配置面板、改主题、切语言，再重启一次验证窗口状态与配置恢复（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
+- 在 **ubuntu（xvfb）与 windows** 两个平台各跑一次 `npm run smoke`，真正启动 Electron 并校验 `.env` 加载与日志落盘——避免「门禁全绿但应用起不来」
+- 两个平台各跑一次 `npm run e2e`：真实启动两次，第一次校验 `.env` 首启生效与设置页只读，改 `.env` 后重启再校验窗口尺寸/主题/语言（单测 mock 掉 `invoke` 之后，序列化错误这类问题只有真实链路能暴露）
 
 ## 打包
 
@@ -291,6 +302,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 
 - 主进程与 preload 输出到 `dist-electron`
 - 渲染产物通过 `extraResources` 进入安装包的 `resources/dist`
+- **`.env` 也会被复制到 `resources/.env`**（`build.mjs` 会先在缺失时从 `.env.example` 复制）：安装包自带一份默认配置，使用者可直接编辑安装目录下的 `.env` 后重启
 - 打包配置位于 `package.json` 的 `build` 字段（`win` / `linux` 两段）
 - Linux 的 `deb` 需要维护者信息，配置里用 `build.linux.maintainer`；换成你自己的团队即可
 - 图标要求：Windows 用 `.ico`，Linux 用**真正的 PNG**（≥512×512）。`assets/icon.png` 目前是从 256×256 的 ICO 放大而来，正式发布前建议换成设计稿导出的 512/1024 PNG
@@ -299,11 +311,11 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 
 ## 安全默认
 
-- `nodeIntegration: false`、`contextIsolation: true`、`sandbox` 默认开启（由 `security.sandboxEnabled` 控制）
+- `nodeIntegration: false`、`contextIsolation: true`、`sandbox` 默认开启（由 `.env` 的 `SECURITY_SANDBOX_ENABLED` 控制）
 - preload 只暴露白名单通道，已移除任意 `send` / `on`
 - IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；导航守卫与 DevTools 守卫对所有创建的窗口生效（框架目前只建主窗口，多窗口 API 已按"无人使用"移除）
 - **不提供通用文件读写通道**：它能写进 `userData/modules`，与动态模块加载叠加等于给渲染进程留了持久化提权链
-- 配置写入走 schema 白名单校验，拒绝未知键、错误类型与原型键
+- 配置写入通道已移除：渲染进程只能通过 `config:get` 读取，无法修改任何配置
 - **生产态收起 DevTools**：除非 `features.developerTools` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截
 - 渲染端日志上报有级别白名单、长度截断与限流，避免被异常循环刷爆日志
 - CSP 禁止 `unsafe-eval`，并显式关闭 `object-src` 与 `base-uri`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截

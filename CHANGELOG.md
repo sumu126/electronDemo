@@ -4,6 +4,20 @@
 
 ## Unreleased
 
+### 配置源改为 `.env`（取代下方 `config.json` 相关条目）
+
+- **新增 `.env` 项目配置**：仓库根目录 `.env`（打包后 `resources/.env`）成为唯一配置来源；`src/main/utils/env.ts` 负责解析（BOM / 注释 / `export` / 引号 / 行内注释）与路径解析（`ELECTRON_ENV_FILE` 覆盖），`src/shared/config/from-env.ts` 负责映射与校验，非法值 warning 后回退默认值
+- **新增 `.env.example`**：仓库只跟踪模板，本地复制为 `.env`；`.gitignore` 忽略 `.env` / `.env.*` 但显式放行 `!.env.example`；`scripts/ensure-env.mjs` 在 `install` / `dev` / `build` 时自动补齐本地 `.env`
+- **移除 `config.json` 持久化**：`ConfigModule` 改为启动时读取 `.env`，删除 `saveConfig` / `updateConfig` / `setValue` / 写队列 / `configPath`、`src/shared/config/schema.ts`、`src/main/utils/early-config.ts` 及对应测试
+- **移除 `config:update`**：`constants` / `types` / `ipc.manager` / preload 白名单同步删除；渲染进程只能通过 `config:get` 读取
+- **窗口状态不再持久化**：删除 resize/move 防抖落盘与 `createWindowStateSnapshot`，窗口尺寸/位置改由 `.env` 的 `WINDOW_*` 决定
+- **托盘通知改为会话内状态**：默认本次运行只提示一次；`TRAY_BALLOON_NOTIFICATION_ENABLED=true` 时每次提示；移除 `tray.hasShownFirstTimeNotice`
+- **设置页只读**：`ConfigPanel` 只展示主题、语言、开发者工具与沙箱状态，并提示编辑 `.env` 后重启
+- **开发体验**：`electron:dev` 监听根目录 `.env`，保存后自动重启 Electron
+- **打包**：`extraResources` 把 `.env` 复制到安装包 `resources/.env`
+- **测试**：`smoke` / `e2e` 改用临时 `.env` + `ELECTRON_ENV_FILE`；e2e 覆盖「首启配置生效 → 设置页只读 → 改 `.env` → 重启尺寸/主题/语言生效」；新增 `env.test.ts` 与 `from-env.test.ts`
+- 下方「配置 schema」「配置并发写」「`config.json` 的 `version`」条目随 `config.json` 一并失效，仅留作历史记录
+
 ### Added
 
 - **主题**：`theme` 支持 `light / dark / auto`，颜色收敛为 CSS 变量（`src/renderer/styles/theme.css`），`auto` 跟随系统配色变化

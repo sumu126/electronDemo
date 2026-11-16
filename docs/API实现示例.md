@@ -194,7 +194,6 @@ const ALLOWED_CHANNELS = [
   'ping',
   'system:info',
   'config:get',
-  'config:update',
   'log:report',
   'user:list', // 新增
   'user:create', // 新增
