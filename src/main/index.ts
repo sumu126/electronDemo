@@ -1,6 +1,11 @@
 import { app } from 'electron';
 import { App } from './app';
 import { getLogger } from './utils/app-logger';
+import { clearStaleWindowsLockFile, describeLockFailure } from './utils/singleton-lock';
+
+// 与 scripts/dev.mjs 的 SECOND_INSTANCE_EXIT_CODE 保持一致：
+// 用独立退出码把「锁获取失败」和普通退出区分开，开发启动器才能给出准确提示
+const SECOND_INSTANCE_EXIT_CODE = 21;
 
 // 可在启动前指定 userData 目录：CI 冒烟与便携模式需要隔离真实用户数据
 const userDataOverride = process.env.ELECTRON_USER_DATA_DIR;
@@ -9,12 +14,20 @@ if (userDataOverride) {
   app.setPath('userData', userDataOverride);
 }
 
+const userDataDir = app.getPath('userData');
+
+// Windows 上只读/残留的 lockfile 会让 Electron 以 ACCESS_DENIED 中止，
+// 表现和「已有实例」一样；请求锁之前先安全清理一次。
+const lockProbe = clearStaleWindowsLockFile(userDataDir);
+
 // 单实例锁 - 确保只运行一个应用实例
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  getLogger().info('Another instance of the app is already running. Quitting this instance.');
-  app.quit();
+  getLogger().error(
+    `Failed to acquire single instance lock (userData: ${userDataDir}, probe: ${lockProbe}): ${describeLockFailure(lockProbe)}`,
+  );
+  app.exit(SECOND_INSTANCE_EXIT_CODE);
 } else {
   // 创建App实例
   const appInstance = new App();

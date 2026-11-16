@@ -7,7 +7,7 @@
  * 用法：node scripts/smoke.mjs
  */
 import { spawn } from 'child_process';
-import { mkdtempSync, readFileSync, rmSync, existsSync } from 'fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import electronPath from 'electron';
@@ -16,8 +16,15 @@ const root = process.cwd();
 const userDataDir = mkdtempSync(join(tmpdir(), 'electron-smoke-'));
 const TIMEOUT_MS = 40_000;
 const POLL_INTERVAL_MS = 250;
+const SECOND_INSTANCE_EXIT_CODE = 21;
 
 const isWindows = process.platform === 'win32';
+
+// 预置一个只读的 lockfile：Windows 上 Electron 会以 ACCESS_DENIED 中止，
+// 应用必须在请求单实例锁之前把它清掉；Linux 的锁机制不同，这个文件无害。
+const staleLockPath = join(userDataDir, 'lockfile');
+writeFileSync(staleLockPath, 'stale', 'utf-8');
+chmodSync(staleLockPath, 0o444);
 
 // CI（尤其容器里的 Linux）需要关掉 GPU 与沙箱才能起窗口
 const args = ['.', '--disable-gpu'];
@@ -155,6 +162,31 @@ const main = async () => {
 
     if (/uncaught|Blocked IPC/i.test(log)) {
       fail('main.log contains uncaught errors or blocked IPC calls');
+    }
+
+    // 首实例已持有锁：第二实例必须被挡住，并用专用退出码结束
+    const second = spawn(electronPath, args, {
+      cwd: root,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    second.stdout.on('data', (chunk) => logs.push(chunk.toString()));
+    second.stderr.on('data', (chunk) => logs.push(chunk.toString()));
+
+    const secondCode = await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        stop(second);
+        resolve(null);
+      }, 10_000);
+
+      second.once('exit', (code) => {
+        clearTimeout(timer);
+        resolve(code);
+      });
+    });
+
+    if (secondCode !== SECOND_INSTANCE_EXIT_CODE) {
+      fail(`second instance exited with ${secondCode}, expected ${SECOND_INSTANCE_EXIT_CODE}`);
     }
 
     console.log(`[smoke] OK: app started, config + log written under ${userDataDir}`);
