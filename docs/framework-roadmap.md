@@ -581,3 +581,35 @@ git clone → npm ci（501 包，17s）→ build → typecheck → lint → test
 
 - 用来开发应用：可以，Windows 与 Linux 都有实机证据
 - 对外开放：可以，剩下的只是把竞态修复推上去让 windows job 复跑
+
+## 23. 第八轮：平台毛刺、类型对齐与日志轮转（2026-11-16）
+
+按交接文档的 P0-2 / P0-3 / P0-4 执行，全部是"平时不炸、特定平台或长期运行才炸"的小口子。
+
+### 平台与安全
+
+1. **窗口图标按平台选择**：Linux 优先 `icon.png`，其余平台优先 `icon.ico`，复用 `pickDecodableImage` 的"解不出图就换下一个"逻辑（`window-policy.ts` / `window.manager.ts`）
+2. **首帧背景跟随主题**：`backgroundColor` 由配置 `theme` 与 `nativeTheme.shouldUseDarkColors` 解析，取 `theme.css` 的 `--color-bg`（`#f5f5f5` / `#16181d`），深色启动不再闪白
+3. **补齐 `setPermissionCheckHandler`**：与 `setPermissionRequestHandler` 一起默认拒绝，避免只走同步查询的 API 拿到放行结果
+4. **CSP 收紧**：增加 `object-src 'none'` 与 `base-uri 'none'`（`frame-ancestors` 在 `<meta>` 里会被忽略，未添加）
+
+### 类型与运维
+
+5. **`AppConfig.language` 由 `string` 收紧为 `Locale`**，与 schema 枚举对齐；`ConfigPanel` 的赋值同步收窄
+6. **日志按大小轮转**：`Logger` 超过 5 MB 切分，保留 `main.log.1`…`main.log.3`，轮转判断放在串行队列内；`flush()` 与退出刷盘语义不变
+
+### 死代码
+
+7. **清理 `shared/utils/helpers.ts`**：删除仅测试引用的 11 个函数（`deepClone`、`generateId`、`formatDate`、`validateEmail`、`validatePhone`、`objectToQueryString`、`camelToKebab`、`kebabToCamel`、`capitalize`、`throttle`、`debounce`），只保留生产代码使用的 `deepMerge`
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test:coverage` / `build` / `smoke` / `e2e` 全绿
+- 用例 126 → **128**（窗口策略 +3、日志轮转 +1、helpers -2）
+- 覆盖率 statements 53.17% → **55.68%**，branches 56.35% → **60.77%**，functions 50.22% → **53.91%**，lines 53.76% → **56.10%**；阈值保持 51/54/48/51
+- 真机冒烟与 e2e 在 Windows 上通过；Linux 侧的图标回退只由纯函数用例覆盖
+
+### 仍未处理
+
+- **P0-1 未动**：IPC 注册仍是内核硬编码，模块没有贡献点
+- 主进程启动链路与窗口事件仍无测试；e2e 仍只有一条主流程

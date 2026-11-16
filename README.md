@@ -14,7 +14,7 @@
 - **路由骨架**：`vue-router` 4 + hash 模式 + 404 兜底，打包后 `file://` 可直接工作
 - **错误边界**：页面级异常被 `AppErrorBoundary` 兜住，不整页白屏
 - **模块系统**：`userData/modules` 下的 CommonJS 模块可动态加载，单个模块失败不影响启动
-- **日志与异常**：主进程异步文件日志（退出前刷盘）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
+- **日志与异常**：主进程异步文件日志（退出前刷盘，按 5 MB 轮转保留 3 份）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
 - **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
 - **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
 - **安全默认**：`sandbox: true`、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
@@ -212,6 +212,7 @@ await configStore.updateConfig({ theme: 'dark' });
 ### 日志
 
 - 主进程日志：`userData/logs/main.log`，异步串行写入（不阻塞事件循环）
+- 单文件超过 5 MB 时轮转为 `main.log.1`…`main.log.3`，最旧的丢弃；退出前 `flush()` 语义不变
 - 退出与崩溃路径会先 `flush()` 再退出，崩溃原因不会停在缓冲区
 - `uncaughtException` / `unhandledRejection` 会记录后兜底
 - **渲染端异常也会进同一个文件**：`errorHandler`、`unhandledrejection`、`AppErrorBoundary`、`useSystemInfo` 都走 `log:report`，带 `[renderer]` 前缀
@@ -279,8 +280,9 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 - 配置写入走 schema 白名单校验，拒绝未知键、错误类型与原型键
 - **生产态收起 DevTools**：除非 `features.developerTools` 为 true，否则菜单里没有「开发者工具」项，F12 / Ctrl+Shift+I / Cmd+Alt+I 也被拦截
 - 渲染端日志上报有级别白名单、长度截断与限流，避免被异常循环刷爆日志
-- CSP 禁止 `unsafe-eval`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截
-- Web 权限请求默认拒绝
+- CSP 禁止 `unsafe-eval`，并显式关闭 `object-src` 与 `base-uri`；HMR 的 `ws://localhost:5173` 只在开发态注入，生产 CSP 为 `connect-src 'self'`；站外导航与 `window.open` 默认拦截
+- Web 权限请求与权限查询默认拒绝（`setPermissionRequestHandler` + `setPermissionCheckHandler`）
+- 窗口首帧背景与窗口图标按主题/平台选择：深色主题启动不闪白，Linux 优先使用可解码的 PNG 图标
 - 托盘创建失败时不会隐藏窗口（避免窗口消失且无法唤回）；退出时模块清理最长等 3 秒
 
 ## 文档
