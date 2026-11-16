@@ -37,10 +37,13 @@ export interface AppMessages {
     language: string;
     features: string;
     developerTools: string;
-    save: string;
-    saving: string;
-    saveFailed: string;
-    reset: string;
+    security: string;
+    sandbox: string;
+    enabled: string;
+    disabled: string;
+    envHint: string;
+    loading: string;
+    loadFailed: string;
   };
   framework: {
     description: string;
@@ -78,10 +81,13 @@ const zhCN: AppMessages = {
     language: '语言',
     features: '功能设置',
     developerTools: '开发者工具',
-    save: '保存配置',
-    saving: '保存中...',
-    saveFailed: '保存失败，请重试（详细信息已写入日志）',
-    reset: '重置',
+    security: '安全设置',
+    sandbox: 'Chromium 沙箱',
+    enabled: '已开启',
+    disabled: '已关闭',
+    envHint: '配置来自项目根目录的 .env，修改后重启应用生效。',
+    loading: '加载中...',
+    loadFailed: '读取配置失败，请查看日志。',
   },
   framework: {
     description: '一个现代化的桌面应用程序框架',
@@ -140,10 +146,13 @@ const enUS: AppMessages = {
     language: 'Language',
     features: 'Features',
     developerTools: 'Developer tools',
-    save: 'Save settings',
-    saving: 'Saving...',
-    saveFailed: 'Failed to save. Please retry (details are in the log).',
-    reset: 'Reset',
+    security: 'Security',
+    sandbox: 'Chromium sandbox',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    envHint: 'Settings come from the project .env file. Restart the app after editing.',
+    loading: 'Loading...',
+    loadFailed: 'Failed to load settings. Check the log for details.',
   },
   framework: {
     description: 'A modern desktop application framework',

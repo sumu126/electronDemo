@@ -124,10 +124,7 @@ describe('ModuleManager 用户模块（插件）集成', () => {
     await manager.init();
 
     expect(manager.getModule('EvilModule', isModule)).toBeDefined();
-    expect(manager.collectIpcHandlers().map((item) => item.channel)).toEqual([
-      'config:get',
-      'config:update',
-    ]);
+    expect(manager.collectIpcHandlers().map((item) => item.channel)).toEqual(['config:get']);
   });
 
   it('getModule 用运行时守卫校验类型，不再按名字强转', async () => {

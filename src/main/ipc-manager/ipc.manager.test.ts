@@ -25,12 +25,10 @@ vi.mock('electron', () => ({
 
 const configStub = {
   getConfig: vi.fn(() => createDefaultConfig({ theme: 'dark' })),
-  updateConfig: vi.fn(async (_updates: unknown) => undefined),
 };
 
 const configContributions: IpcHandlerContribution[] = [
   { channel: 'config:get', handler: () => configStub.getConfig() },
-  { channel: 'config:update', handler: (_event, updates) => configStub.updateConfig(updates) },
 ];
 
 const moduleManagerStub = {
@@ -57,7 +55,6 @@ beforeEach(() => {
   fake.handlers.clear();
   fake.removed = [];
   configStub.getConfig.mockClear();
-  configStub.updateConfig.mockClear();
   moduleManagerStub.collectIpcHandlers.mockReset();
   moduleManagerStub.collectIpcHandlers.mockReturnValue(configContributions);
   // Node 里没有 process.defaultApp，这里模拟「打包态」：只信任 file://
@@ -78,7 +75,6 @@ describe('IpcManager', () => {
 
     expect([...fake.handlers.keys()].sort()).toEqual([
       'config:get',
-      'config:update',
       'log:report',
       'ping',
       'system:info',
@@ -104,14 +100,6 @@ describe('IpcManager', () => {
       /Blocked IPC call/,
     );
     expect(spy).not.toHaveBeenCalled();
-  });
-
-  it('config:update 把入参透传给 ConfigModule', async () => {
-    createManager().setupHandlers();
-
-    await invoke('config:update', trustedEvent(), { theme: 'light' });
-
-    expect(configStub.updateConfig).toHaveBeenCalledWith({ theme: 'light' });
   });
 
   it('log:report 到达日志处理器（不抛错即视为成功）', async () => {

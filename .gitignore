@@ -7,6 +7,8 @@ coverage/
 # 本地凭据与证书：签名由使用方负责，不要提交进仓库
 .env
 .env.*
+# .env.example 是配置模板，必须进仓库；使用方复制成本地 .env 后自行修改
+!.env.example
 *.pfx
 *.p12
 *.cer

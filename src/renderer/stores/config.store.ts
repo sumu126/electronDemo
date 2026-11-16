@@ -2,8 +2,6 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { createDefaultConfig } from '@shared/config/defaults';
 import type { AppConfig } from '@shared/types';
-import { toPlain } from '../utils/plain';
-import { reportError } from '../utils/report';
 
 const getByPath = (source: unknown, keyPath: string): unknown =>
   keyPath.split('.').reduce<unknown>((current, key) => {
@@ -13,19 +11,9 @@ const getByPath = (source: unknown, keyPath: string): unknown =>
     return undefined;
   }, source);
 
-const buildNestedUpdate = (keyPath: string, value: unknown): Partial<AppConfig> => {
-  const keys = keyPath.split('.');
-  let result: unknown = value;
-
-  for (let index = keys.length - 1; index >= 0; index -= 1) {
-    result = { [keys[index]]: result };
-  }
-
-  return result as Partial<AppConfig>;
-};
-
 /**
- * 配置的渲染进程唯一数据源：全部读写走主进程，不再使用 localStorage。
+ * 配置的渲染进程唯一数据源。
+ * .env 是唯一来源，主进程只读；这里不再提供 updateConfig / setValue。
  */
 export const useConfigStore = defineStore('config', () => {
   const config = ref<AppConfig>(createDefaultConfig());
@@ -51,28 +39,6 @@ export const useConfigStore = defineStore('config', () => {
     }
   };
 
-  const updateConfig = async (updates: Partial<AppConfig>): Promise<void> => {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      // 入参通常是 ref/reactive 里的 Proxy，必须先转纯数据，否则结构化克隆直接失败
-      await window.electronAPI.invoke('config:update', toPlain(updates));
-      config.value = await window.electronAPI.invoke('config:get');
-      loaded.value = true;
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : '更新配置失败';
-      console.error('[config] update failed:', err);
-      reportError('Failed to update config', err);
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  const setValue = async <T>(keyPath: string, value: T): Promise<void> => {
-    await updateConfig(buildNestedUpdate(keyPath, value));
-  };
-
   const getValue = <T>(keyPath: string): T | undefined =>
     getByPath(config.value, keyPath) as T | undefined;
 
@@ -82,8 +48,6 @@ export const useConfigStore = defineStore('config', () => {
     loading,
     error,
     ensureLoaded,
-    updateConfig,
-    setValue,
     getValue,
   };
 });

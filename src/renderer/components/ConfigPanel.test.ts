@@ -31,39 +31,34 @@ beforeEach(() => {
 });
 
 describe('ConfigPanel', () => {
-  it('从配置回显主题与语言', async () => {
-    const wrapper = mountPanel(createDefaultConfig({ theme: 'dark', language: 'en-US' }));
-    await flushPromises();
-
-    const [themeSelect, languageSelect] = wrapper.findAll('select');
-    expect((themeSelect.element as HTMLSelectElement).value).toBe('dark');
-    expect((languageSelect.element as HTMLSelectElement).value).toBe('en-US');
-
-    wrapper.unmount();
-  });
-
-  it('语言切换后文案跟随配置变化', async () => {
-    const wrapper = mountPanel(createDefaultConfig({ language: 'en-US' }));
+  it('只读展示 .env 中的主题、语言与沙箱状态', async () => {
+    const wrapper = mountPanel(
+      createDefaultConfig({
+        theme: 'dark',
+        language: 'en-US',
+        security: { sandboxEnabled: false },
+      }),
+    );
     await flushPromises();
 
     expect(wrapper.text()).toContain('Application settings');
-    expect(wrapper.text()).toContain('Follow system');
+    expect(wrapper.text()).toContain('Dark');
+    expect(wrapper.text()).toContain('en-US');
+    expect(wrapper.text()).toContain('Disabled');
+    expect(wrapper.text()).toContain('project .env file');
+
+    expect(wrapper.findAll('select')).toHaveLength(0);
+    expect(wrapper.find('.btn-primary').exists()).toBe(false);
 
     wrapper.unmount();
   });
 
-  it('保存时把本地编辑通过 config:update 提交', async () => {
-    const wrapper = mountPanel();
+  it('不提供运行时写配置的入口', async () => {
+    const wrapper = mountPanel(createDefaultConfig({ language: 'zh-CN' }));
     await flushPromises();
 
-    await wrapper.findAll('select')[0].setValue('light');
-    await wrapper.get('.btn-primary').trigger('click');
-    await flushPromises();
-
-    expect(invoke).toHaveBeenCalledWith(
-      'config:update',
-      expect.objectContaining({ theme: 'light' }),
-    );
+    expect(invoke).toHaveBeenCalledWith('config:get');
+    expect(invoke).not.toHaveBeenCalledWith('config:update', expect.anything());
 
     wrapper.unmount();
   });

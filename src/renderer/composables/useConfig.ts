@@ -3,8 +3,8 @@ import { useConfigStore } from '../stores/config.store';
 import type { AppConfig } from '@shared/types';
 
 /**
- * 配置读取/更新的组合式入口。
- * 数据源统一为 ConfigStore，ConfigStore 再走主进程，不再读写 localStorage。
+ * 配置读取入口。配置来自项目 .env，主进程只读；
+ * 修改配置请编辑 .env 后重启，不在渲染进程提供写入。
  */
 export const useConfig = () => {
   const store = useConfigStore();
@@ -17,8 +17,6 @@ export const useConfig = () => {
     config: computed<AppConfig>(() => store.config),
     loading: computed(() => store.loading),
     error: computed(() => store.error),
-    updateConfig: (updates: Partial<AppConfig>) => store.updateConfig(updates),
-    setValue: <T>(keyPath: string, value: T) => store.setValue(keyPath, value),
     getValue: <T>(keyPath: string): T | undefined => store.getValue<T>(keyPath),
   };
 };

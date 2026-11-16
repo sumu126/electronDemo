@@ -21,9 +21,8 @@ export const IPC_CHANNELS = {
   WINDOW_MAXIMIZE: 'window:maximize',
   WINDOW_CLOSE: 'window:close',
 
-  // 配置管理通道
+  // 配置读取通道（配置只从 .env 读取，运行时不可写）
   CONFIG_GET: 'config:get',
-  CONFIG_UPDATE: 'config:update',
 
   // 渲染进程日志上报（限流）
   LOG_REPORT: 'log:report',

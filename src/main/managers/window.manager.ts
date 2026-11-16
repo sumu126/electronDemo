@@ -11,7 +11,6 @@ import { getLogger } from '../utils/app-logger';
 import { isDevtoolsShortcut } from './devtools-shortcut';
 import { pickDecodableImage } from './tray-icon';
 import {
-  createWindowStateSnapshot,
   resolveCloseAction,
   resolveLoadTarget,
   resolveWindowBackgroundColor,
@@ -24,7 +23,8 @@ export class WindowManager {
   private tray: Tray | null = null;
   private configModule: ConfigModule | null = null;
   private quitting = false;
-  private windowStateTimer: NodeJS.Timeout | null = null;
+  // 托盘通知只在本进程内记一次；配置只读，不再落盘
+  private hasShownTrayNotice = false;
 
   public setConfigModule(configModule: ConfigModule): void {
     this.configModule = configModule;
@@ -110,17 +110,12 @@ export class WindowManager {
 
     // 窗口真正关闭事件
     this.mainWindow.on('closed', () => {
-      if (this.windowStateTimer) {
-        clearTimeout(this.windowStateTimer);
-        this.windowStateTimer = null;
-      }
       this.mainWindow = null;
     });
 
     this.loadApp(this.mainWindow);
     this.registerNavigationGuards(this.mainWindow);
     this.registerDevtoolsGuard(this.mainWindow);
-    this.registerWindowStateEvents(this.mainWindow);
 
     return this.mainWindow;
   }
@@ -188,43 +183,6 @@ export class WindowManager {
     window.webContents.on('devtools-opened', () => {
       window.webContents.closeDevTools();
     });
-  }
-
-  private registerWindowStateEvents(window: BrowserWindow): void {
-    const scheduleSave = () => this.scheduleWindowStateSave();
-
-    window.on('resize', scheduleSave);
-    window.on('move', scheduleSave);
-    window.on('maximize', scheduleSave);
-    window.on('unmaximize', scheduleSave);
-    // 关闭（含最小化到托盘）时立即落盘，避免防抖期间退出导致状态丢失
-    window.on('close', () => this.persistWindowState());
-  }
-
-  private scheduleWindowStateSave(): void {
-    if (this.windowStateTimer) {
-      clearTimeout(this.windowStateTimer);
-    }
-
-    this.windowStateTimer = setTimeout(() => {
-      this.windowStateTimer = null;
-      this.persistWindowState();
-    }, 300);
-  }
-
-  private persistWindowState(): void {
-    const window = this.mainWindow;
-
-    if (!this.configModule || !window || window.isDestroyed()) {
-      return;
-    }
-
-    const bounds = window.getNormalBounds();
-    const snapshot = createWindowStateSnapshot(bounds, window.isMaximized());
-
-    void this.configModule
-      .updateConfig({ window: snapshot })
-      .catch((error) => getLogger().error('Failed to save window state', error));
   }
 
   public getMainWindow(): BrowserWindow | null {
@@ -329,35 +287,21 @@ export class WindowManager {
     return true;
   }
 
-  private async checkAndShowTrayNotification(): Promise<void> {
+  private checkAndShowTrayNotification(): void {
     const { tray: trayMessages } = this.messages();
-    const notify = () =>
-      this.showTrayNotification(trayMessages.minimizedTitle, trayMessages.minimizedBody);
-
     const balloonEnabled =
       this.configModule?.getValue<boolean>('tray.balloonNotificationEnabled') ?? false;
 
     if (balloonEnabled) {
       // 每次关闭都显示通知
-      notify();
+      this.showTrayNotification(trayMessages.minimizedTitle, trayMessages.minimizedBody);
       return;
     }
 
-    if (!this.configModule) {
-      notify();
-      return;
-    }
-
-    // 默认只在第一次关闭时显示通知
-    try {
-      const hasShown = this.configModule.getValue<boolean>('tray.hasShownFirstTimeNotice');
-      if (!hasShown) {
-        notify();
-        await this.configModule.setValue('tray.hasShownFirstTimeNotice', true);
-      }
-    } catch (error) {
-      getLogger().error('Error checking tray notification status', error);
-      notify();
+    // 默认只在本次运行第一次关闭时显示通知；配置只读，不再落盘
+    if (!this.hasShownTrayNotice) {
+      this.hasShownTrayNotice = true;
+      this.showTrayNotification(trayMessages.minimizedTitle, trayMessages.minimizedBody);
     }
   }
 

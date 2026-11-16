@@ -7,7 +7,6 @@ describe('createDefaultConfig', () => {
 
     expect(config.window.width).toBe(1200);
     expect(config.features.developerTools).toBe(false);
-    expect(config.tray.hasShownFirstTimeNotice).toBe(false);
     expect(config.tray.balloonNotificationEnabled).toBe(false);
     expect(config.security.sandboxEnabled).toBe(true);
   });

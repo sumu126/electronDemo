@@ -26,15 +26,11 @@ export interface FeatureFlags {
 }
 
 export interface TrayConfig {
-  hasShownFirstTimeNotice: boolean;
   balloonNotificationEnabled: boolean;
 }
 
 export interface SecurityConfig {
-  /**
-   * 是否启用 Chromium 沙箱，默认 true。
-   * 只在启动早期从 userData/config.json 读取；渲染进程不能通过 config:update 修改。
-   */
+  /** 是否启用 Chromium 沙箱，默认 true；来自项目 .env 的 SECURITY_SANDBOX_ENABLED */
   sandboxEnabled: boolean;
 }
 
@@ -72,7 +68,6 @@ export interface IpcInvokeMap {
   ping: { args: []; returns: string };
   'system:info': { args: []; returns: SystemInfo };
   'config:get': { args: []; returns: AppConfig };
-  'config:update': { args: [updates: Partial<AppConfig>]; returns: void };
   'log:report': {
     args: [
       level: 'info' | 'warn' | 'error',

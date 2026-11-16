@@ -20,7 +20,6 @@ export function createDefaultConfig(overrides: Partial<AppConfig> = {}): AppConf
       developerTools: false,
     },
     tray: {
-      hasShownFirstTimeNotice: false,
       balloonNotificationEnabled: false,
     },
     security: {

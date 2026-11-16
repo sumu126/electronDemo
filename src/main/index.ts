@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { App } from './app';
 import { getLogger } from './utils/app-logger';
-import { readSandboxEnabled } from './utils/early-config';
+import { loadProjectEnv, readSandboxEnabled, resolveEnvPath } from './utils/env';
 import { clearStaleWindowsLockFile, describeLockFailure } from './utils/singleton-lock';
 
 // 与 scripts/dev.mjs 的 SECOND_INSTANCE_EXIT_CODE 保持一致：
@@ -18,8 +18,9 @@ if (userDataOverride) {
 const userDataDir = app.getPath('userData');
 
 // 沙箱必须在 app ready / Chromium 初始化之前决定：
-// 只有 config.json 里显式写 security.sandboxEnabled=false 才关闭，默认保持开启。
-const sandboxEnabled = readSandboxEnabled(userDataDir);
+// 只有 .env 里显式写 SECURITY_SANDBOX_ENABLED=false 才关闭，默认保持开启。
+const projectEnv = loadProjectEnv();
+const sandboxEnabled = readSandboxEnabled(projectEnv);
 
 if (!sandboxEnabled) {
   app.commandLine.appendSwitch('no-sandbox');
@@ -47,6 +48,7 @@ if (!gotTheLock) {
   logger.info('Chromium sandbox setting', {
     configured: sandboxEnabled,
     noSandboxSwitch: app.commandLine.hasSwitch('no-sandbox'),
+    envFile: resolveEnvPath(),
   });
 
   // 全局异常兜底：记录后退出，避免静默崩溃

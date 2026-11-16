@@ -7,7 +7,6 @@ const ALLOWED_CHANNELS = [
   'ping',
   'system:info',
   'config:get',
-  'config:update',
   'log:report',
   'window:minimize',
   'window:maximize',

@@ -1,5 +1,5 @@
 import { join } from 'path';
-import type { AppConfig, WindowConfig } from '@shared/types';
+import type { AppConfig } from '@shared/types';
 
 export type CloseAction = 'hide' | 'close';
 
@@ -38,20 +38,6 @@ export function resolveLoadTarget(input: {
   }
 
   return { kind: 'file', file: join(input.resourcesPath, 'dist', 'index.html') };
-}
-
-/** 把窗口当前状态拍成配置快照（用于落盘） */
-export function createWindowStateSnapshot(
-  bounds: { width: number; height: number; x: number; y: number },
-  maximized: boolean,
-): WindowConfig {
-  return {
-    width: bounds.width,
-    height: bounds.height,
-    x: bounds.x,
-    y: bounds.y,
-    maximized,
-  };
 }
 
 /** 与 styles/theme.css 的 --color-bg 对齐，避免深色主题启动时先闪一帧白底 */

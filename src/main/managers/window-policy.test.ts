@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createWindowStateSnapshot,
   resolveCloseAction,
   resolveLoadTarget,
   resolveWindowBackgroundColor,
@@ -43,18 +42,6 @@ describe('resolveLoadTarget', () => {
     if (target.kind === 'file') {
       expect(target.file.replace(/\\/g, '/')).toBe('/opt/app/resources/dist/index.html');
     }
-  });
-});
-
-describe('createWindowStateSnapshot', () => {
-  it('把窗口 bounds 与最大化状态映射成配置', () => {
-    expect(createWindowStateSnapshot({ width: 1200, height: 800, x: 10, y: 20 }, true)).toEqual({
-      width: 1200,
-      height: 800,
-      x: 10,
-      y: 20,
-      maximized: true,
-    });
   });
 });
 

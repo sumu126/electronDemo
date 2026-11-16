@@ -124,7 +124,6 @@ interface ConfigOptions {
   theme?: 'light' | 'dark' | 'auto';
   developerTools?: boolean;
   balloon?: boolean;
-  firstTimeNoticeShown?: boolean;
   sandboxEnabled?: boolean;
 }
 
@@ -141,16 +140,12 @@ const createConfig = (options: ConfigOptions = {}) => ({
         return options.developerTools ?? false;
       case 'tray.balloonNotificationEnabled':
         return options.balloon ?? false;
-      case 'tray.hasShownFirstTimeNotice':
-        return options.firstTimeNoticeShown ?? false;
       case 'security.sandboxEnabled':
         return options.sandboxEnabled ?? true;
       default:
         return undefined;
     }
   }),
-  updateConfig: vi.fn(async () => undefined),
-  setValue: vi.fn(async () => undefined),
 });
 
 const createManager = (config: ReturnType<typeof createConfig>) => {
@@ -202,20 +197,33 @@ describe('WindowManager 窗口事件', () => {
     expect(window.show).toHaveBeenCalled();
   });
 
-  it('关闭时藏到托盘、阻止默认关闭并立即落盘窗口状态', async () => {
-    const config = createConfig();
-    const { window } = createManager(config);
+  it('关闭时藏到托盘并阻止默认关闭', () => {
+    const { window } = createManager(createConfig());
     const event = { preventDefault: vi.fn() };
 
     window.emit('close', event);
-    await vi.waitFor(() => expect(config.setValue).toHaveBeenCalled());
 
     expect(event.preventDefault).toHaveBeenCalled();
     expect(window.hide).toHaveBeenCalled();
     expect(hoisted.trays).toHaveLength(1);
-    expect(config.updateConfig).toHaveBeenCalledWith({
-      window: { width: 1000, height: 700, x: 10, y: 20, maximized: false },
-    });
+  });
+
+  it('默认只在本次运行第一次关闭时显示托盘通知', () => {
+    const { window } = createManager(createConfig({ balloon: false }));
+
+    window.emit('close', { preventDefault: vi.fn() });
+    window.emit('close', { preventDefault: vi.fn() });
+
+    expect(hoisted.trays[0].displayBalloon).toHaveBeenCalledTimes(1);
+  });
+
+  it('配置开启 balloon 时每次关闭都显示通知', () => {
+    const { window } = createManager(createConfig({ balloon: true }));
+
+    window.emit('close', { preventDefault: vi.fn() });
+    window.emit('close', { preventDefault: vi.fn() });
+
+    expect(hoisted.trays[0].displayBalloon).toHaveBeenCalledTimes(2);
   });
 
   it('退出流程中不再拦截关闭', () => {
@@ -237,32 +245,6 @@ describe('WindowManager 窗口事件', () => {
 
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(hoisted.trays).toHaveLength(0);
-  });
-
-  it('resize 防抖 300ms 后落盘，期间的连续事件只写一次', () => {
-    vi.useFakeTimers();
-    const config = createConfig();
-    const { window } = createManager(config);
-
-    window.emit('resize');
-    window.emit('resize');
-    vi.advanceTimersByTime(299);
-    expect(config.updateConfig).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(1);
-    expect(config.updateConfig).toHaveBeenCalledTimes(1);
-  });
-
-  it('窗口真正关闭时取消未执行的防抖计时器', () => {
-    vi.useFakeTimers();
-    const config = createConfig();
-    const { window } = createManager(config);
-
-    window.emit('resize');
-    window.emit('closed');
-    vi.advanceTimersByTime(300);
-
-    expect(config.updateConfig).not.toHaveBeenCalled();
   });
 
   it('站外导航被拦截，file:// 应用页面放行', () => {
