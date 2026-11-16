@@ -759,3 +759,33 @@ if (error != ERROR_SHARING_VIOLATION) {
 - ACL/安全软件导致的不可写只能准确报告，不能自动绕过
 - Linux/macOS 的锁机制不同，不做 lockfile 清理
 - 下游应用仍应修改 `package.json` 的 `name` / `productName` / `appId`，否则打包后共用 userData
+
+## 27. 第十二轮：可配置沙箱（2026-11-16）
+
+### 背景
+
+外置盘上 Chromium 沙箱初始化失败时，应用会以 `0x80000003` 直接退出，开发态已能自动降级，但使用者没有把「这个环境就是不能开沙箱」固化成配置的手段。老框架的做法是直接 `--no-sandbox` + `sandbox: false`，新框架需要默认安全，同时允许显式关闭。
+
+### 设计
+
+- `AppConfig.security.sandboxEnabled`，默认 `true`
+- 新增 `src/main/utils/early-config.ts`：在 `app.whenReady` 之前同步读取 `userData/config.json`；**只有显式 `false`** 才 `app.commandLine.appendSwitch('no-sandbox')`
+- `WindowManager` 的 `webPreferences.sandbox` 使用同一判断；异常值按开启处理
+- `sanitizeConfigUpdate` 校验后**丢弃 `security`**：渲染进程/设置页不能修改，否则 XSS 可以为下一次启动关掉沙箱
+- 保留 `dev.mjs` 的 `0x80000003` 自动降级；启动日志同时记录配置值与 `no-sandbox` 实际开关
+
+### 验证结果
+
+- 五道门禁 + smoke + e2e 全绿
+- 用例 154 → **163**
+- 覆盖率 statements **75.91%** / branches **75.76%** / functions **71.42%** / lines **76.46%**
+- 真实启动（本地盘 Electron + 临时 userData）：
+  - `security.sandboxEnabled=false` → `configured:false, noSandboxSwitch:true`，应用正常建窗
+  - 默认配置 → `configured:true, noSandboxSwitch:false`
+- 最小应用验证 `appendSwitch` 确实生效：`app.getAppMetrics()` 中 GPU / Tab 的 `sandboxed` 由 `true` 变为 `false`
+- `sanitizeConfigUpdate` 用例确认 `security` 写入被丢弃
+
+### 边界
+
+- 该开关只从本地配置文件读取，不提供设置页写入；修改后需重启
+- 关闭沙箱只建议在外置盘等无法初始化沙箱的环境使用；生产环境保持默认 `true`

@@ -17,7 +17,7 @@
 - **日志与异常**：主进程异步文件日志（退出前刷盘，按 5 MB 轮转保留 3 份）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
 - **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
 - **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
-- **安全默认**：`sandbox: true`、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
+- **安全默认**：`sandbox` 默认开启（可在 `config.json` 的 `security.sandboxEnabled` 关闭）、CSP、导航拦截、权限默认拒绝、不提供通用文件读写通道、生产态收起 DevTools
 
 ## 技术栈
 
@@ -62,6 +62,8 @@ npm run electron:dev
 > - `probe=skipped`：Linux/macOS 不做 lockfile 清理，通常是已有实例
 
 > **外置盘上 Electron 以 `0x80000003` 退出**：部分外置盘/非系统盘路径下 Chromium 沙箱无法初始化，`main.log` 可能为空。`electron:dev` 首次遇到该退出码会自动加 `--no-sandbox` 重试一次，仅影响开发态；生产构建仍启用沙箱。
+>
+> **想永久关闭沙箱**：编辑 `userData/config.json`，设置 `"security": { "sandboxEnabled": false }` 后重启。开发态路径是 `node_modules/.cache/electron-dev-user-data/config.json`；外置盘首次启动可以先让 dev 自动降级跑起来，再改这个文件。该开关只从本地配置文件读取，设置页/渲染进程不能修改；关闭会降低安全性，只建议在外置盘等沙箱无法启动的环境使用。
 
 ### 常用命令
 
@@ -198,7 +200,7 @@ await configStore.updateConfig({ language: 'en-US' }); // zh-CN / en-US
 
 ### 新增一个功能开关
 
-框架只内置一个开关 `features.developerTools`（控制开发态自动打开 DevTools，以及生产态是否放行开发者工具）。需要自己的开关时，按下面五步加，类型与 schema 都会兜底：
+框架内置两个开关：`features.developerTools`（功能开关）和 `security.sandboxEnabled`（启动安全开关）。前者按下面的五步加自己的功能开关；后者只从 `config.json` 读取，不走 `config:update`，也不要在设置页暴露——否则渲染进程被 XSS 后可以关掉下一次启动的沙箱。
 
 1. `src/shared/types/index.ts`：在 `FeatureFlags` 加字段
 2. `src/shared/config/defaults.ts`：给默认值（主进程与渲染进程共用这一份）
@@ -226,6 +228,7 @@ await configStore.updateConfig({ theme: 'dark' });
 - 旧版本残留的未知键会在加载时裁剪，首次裁剪前备份到 `config.json.bak`
 - 窗口标题取自配置的 `appName`，构建脚本不再改写 `index.html`
 - `features.developerTools` 控制开发态启动时是否自动打开 DevTools
+- `security.sandboxEnabled` 默认 `true`。设为 `false` 时，主进程会在 `app.whenReady` 之前加 `--no-sandbox`，**重启生效**；该键只从 `userData/config.json` 读取，`config:update` 会丢弃它，渲染进程无法修改
 - 主进程支持 `ELECTRON_USER_DATA_DIR` 覆盖 userData 目录（便携模式与 CI 冒烟用）
 
 ### 窗口状态
@@ -296,7 +299,7 @@ npm run electron:build-linux   # Linux 包（AppImage + deb），需在 Linux �
 
 ## 安全默认
 
-- `nodeIntegration: false`、`contextIsolation: true`、`sandbox: true`
+- `nodeIntegration: false`、`contextIsolation: true`、`sandbox` 默认开启（由 `security.sandboxEnabled` 控制）
 - preload 只暴露白名单通道，已移除任意 `send` / `on`
 - IPC 校验 sender 来源：开发态按 origin 精确比对 `http://localhost:5173`，打包后只接受 `file://` 且拒绝带主机的 file URL（防 `localhost:5173.evil.com` 这类前缀伪装）；导航守卫与 DevTools 守卫对所有创建的窗口生效（框架目前只建主窗口，多窗口 API 已按"无人使用"移除）
 - **不提供通用文件读写通道**：它能写进 `userData/modules`，与动态模块加载叠加等于给渲染进程留了持久化提权链
