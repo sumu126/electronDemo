@@ -10,7 +10,7 @@ import {
   stripUnknownConfigKeys,
 } from '@shared/config/schema';
 import { AppConfig } from '@shared/types';
-import { APP_CONSTANTS } from '@shared/constants';
+import { APP_CONSTANTS, IPC_CHANNELS } from '@shared/constants';
 import { ConfigHandler } from '../ipc/config.handler';
 import type { IpcHandlerContribution } from '../ipc/ipc-contribution';
 import { getLogger } from '../utils/app-logger';
@@ -40,9 +40,9 @@ export class ConfigModule {
     const handler = new ConfigHandler(this);
 
     return [
-      { channel: 'config:get', handler: (event) => handler.getConfig(event) },
+      { channel: IPC_CHANNELS.CONFIG_GET, handler: (event) => handler.getConfig(event) },
       {
-        channel: 'config:update',
+        channel: IPC_CHANNELS.CONFIG_UPDATE,
         handler: (event, updates) => handler.updateConfig(event, updates),
       },
     ];
