@@ -97,7 +97,7 @@ const handleLanguageChange = (event: Event) => {
   const target = event.target as HTMLSelectElement;
   localConfig.value = {
     ...localConfig.value,
-    language: target.value,
+    language: target.value as AppConfig['language'],
   };
 };
 

@@ -1,9 +1,11 @@
+import type { Locale } from '../i18n';
+
 // 应用配置类型定义
 export interface AppConfig {
   appName: string;
   version: string;
   theme: 'light' | 'dark' | 'auto';
-  language: string;
+  language: Locale;
   window: WindowConfig;
   features: FeatureFlags;
   tray: TrayConfig;

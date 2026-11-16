@@ -60,4 +60,20 @@ describe('Logger', () => {
     expect(lines[0]).toContain('line-0');
     expect(lines[19]).toContain('line-19');
   });
+
+  it('超过大小上限时轮转并只保留指定份数', async () => {
+    const filePath = path.join(tempDir, 'rotate.log');
+    const logger = new Logger(filePath, { maxSizeBytes: 200, maxFiles: 2 });
+
+    for (let index = 0; index < 12; index += 1) {
+      logger.info(`line-${index}-${'x'.repeat(40)}`);
+    }
+
+    await logger.flush();
+
+    expect(fs.existsSync(`${filePath}.1`)).toBe(true);
+    expect(fs.existsSync(`${filePath}.2`)).toBe(true);
+    expect(fs.existsSync(`${filePath}.3`)).toBe(false);
+    expect(fs.readFileSync(filePath, 'utf-8')).toContain('line-11');
+  });
 });

@@ -3,6 +3,16 @@ import { dirname } from 'path';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 
+export interface LoggerOptions {
+  /** 单文件大小上限，超过后轮转 */
+  maxSizeBytes?: number;
+  /** 保留的轮转文件份数（main.log.1 … main.log.N） */
+  maxFiles?: number;
+}
+
+const DEFAULT_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const DEFAULT_MAX_FILES = 3;
+
 const stringifyMeta = (meta: unknown): string => {
   if (meta === undefined) {
     return '';
@@ -25,9 +35,18 @@ const stringifyMeta = (meta: unknown): string => {
  */
 export class Logger {
   private queue: Promise<void> = Promise.resolve();
+  private readonly maxSizeBytes: number;
+  private readonly maxFiles: number;
+  private bytesWritten: number;
 
-  constructor(private readonly filePath: string) {
+  constructor(
+    private readonly filePath: string,
+    options: LoggerOptions = {},
+  ) {
     fs.mkdirSync(dirname(filePath), { recursive: true });
+    this.maxSizeBytes = options.maxSizeBytes ?? DEFAULT_MAX_SIZE_BYTES;
+    this.maxFiles = Math.max(1, options.maxFiles ?? DEFAULT_MAX_FILES);
+    this.bytesWritten = this.currentSize();
   }
 
   public info(message: string, meta?: unknown): void {
@@ -49,10 +68,26 @@ export class Logger {
 
   private write(level: LogLevel, message: string, meta: unknown): void {
     const line = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}${stringifyMeta(meta)}`;
+    const payload = `${line}\n`;
+    const bytes = Buffer.byteLength(payload);
 
     // 单次写失败不打断后续日志：catch 收敛掉异常，队列始终保持 resolved
     this.queue = this.queue
-      .then(() => fs.promises.appendFile(this.filePath, `${line}\n`, 'utf-8'))
+      .then(async () => {
+        // 轮转判断放在队列里做：并发写入按顺序看到同一个 bytesWritten，不会连环触发
+        if (this.bytesWritten > 0 && this.bytesWritten + bytes > this.maxSizeBytes) {
+          try {
+            await this.rotate();
+            this.bytesWritten = 0;
+          } catch (error) {
+            // 轮转失败不应吞掉这条日志，继续追加
+            console.error('Failed to rotate log file:', error);
+          }
+        }
+
+        await fs.promises.appendFile(this.filePath, payload, 'utf-8');
+        this.bytesWritten += bytes;
+      })
       .catch((error) => {
         console.error('Failed to write log file:', error);
       });
@@ -63,6 +98,35 @@ export class Logger {
       console.warn(line);
     } else {
       console.log(line);
+    }
+  }
+
+  private currentSize(): number {
+    try {
+      return fs.statSync(this.filePath).size;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** 按大小轮转：main.log → main.log.1 → … → main.log.N，最旧的丢弃 */
+  private async rotate(): Promise<void> {
+    await fs.promises.rm(`${this.filePath}.${this.maxFiles}`, { force: true });
+
+    for (let index = this.maxFiles - 1; index >= 1; index -= 1) {
+      await this.renameIfExists(`${this.filePath}.${index}`, `${this.filePath}.${index + 1}`);
+    }
+
+    await this.renameIfExists(this.filePath, `${this.filePath}.1`);
+  }
+
+  private async renameIfExists(from: string, to: string): Promise<void> {
+    try {
+      await fs.promises.rename(from, to);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
     }
   }
 }
