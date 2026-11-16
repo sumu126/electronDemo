@@ -38,6 +38,12 @@ describe('sanitizeConfigUpdate', () => {
     expect(() => sanitizeConfigUpdate(null)).toThrow(/必须是对象/);
     expect(() => sanitizeConfigUpdate([{ theme: 'dark' }])).toThrow(/必须是对象/);
   });
+
+  it('丢弃渲染进程对沙箱开关的写入', () => {
+    expect(sanitizeConfigUpdate({ security: { sandboxEnabled: false }, theme: 'dark' })).toEqual({
+      theme: 'dark',
+    });
+  });
 });
 
 describe('findUnknownConfigKeys', () => {
@@ -65,5 +71,11 @@ describe('stripUnknownConfigKeys', () => {
     });
 
     expect(pruned).toEqual({ theme: 'dark', window: { width: 1200 } });
+  });
+
+  it('保留本地配置文件里的沙箱开关', () => {
+    expect(stripUnknownConfigKeys({ security: { sandboxEnabled: false } })).toEqual({
+      security: { sandboxEnabled: false },
+    });
   });
 });

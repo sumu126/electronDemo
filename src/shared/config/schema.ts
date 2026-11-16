@@ -39,6 +39,9 @@ const CONFIG_SCHEMA: SchemaObject = {
     hasShownFirstTimeNotice: 'boolean',
     balloonNotificationEnabled: 'boolean',
   },
+  security: {
+    sandboxEnabled: 'boolean',
+  },
 };
 
 const hasOwn = (target: object, key: string): boolean =>
@@ -118,7 +121,14 @@ export function sanitizeConfigUpdate(updates: unknown): Partial<AppConfig> {
     throw new Error(`配置更新必须是对象，收到 ${typeName(updates)}`);
   }
 
-  return validateNode('config', updates, CONFIG_SCHEMA) as Partial<AppConfig>;
+  const sanitized = validateNode('config', updates, CONFIG_SCHEMA) as Partial<AppConfig>;
+
+  // 沙箱开关只允许本地用户改 config.json。
+  // 如果渲染进程能通过 config:update 关闭它，XSS 就可以为下一次启动关掉沙箱，
+  // 正好绕过沙箱要防的那一层，所以这里校验后直接丢弃。
+  delete sanitized.security;
+
+  return sanitized;
 }
 
 function prune(value: unknown, node: SchemaObject): Record<string, unknown> {

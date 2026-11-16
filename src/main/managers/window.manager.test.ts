@@ -125,6 +125,7 @@ interface ConfigOptions {
   developerTools?: boolean;
   balloon?: boolean;
   firstTimeNoticeShown?: boolean;
+  sandboxEnabled?: boolean;
 }
 
 const createConfig = (options: ConfigOptions = {}) => ({
@@ -142,6 +143,8 @@ const createConfig = (options: ConfigOptions = {}) => ({
         return options.balloon ?? false;
       case 'tray.hasShownFirstTimeNotice':
         return options.firstTimeNoticeShown ?? false;
+      case 'security.sandboxEnabled':
+        return options.sandboxEnabled ?? true;
       default:
         return undefined;
     }
@@ -182,6 +185,13 @@ describe('WindowManager 窗口事件', () => {
     expect(window.show).toHaveBeenCalled();
     expect(window.options.width).toBe(1000);
     expect(window.options.backgroundColor).toBe('#f5f5f5');
+    expect(window.options.webPreferences).toMatchObject({ sandbox: true });
+  });
+
+  it('配置关闭沙箱时 webPreferences.sandbox 为 false', () => {
+    const { window } = createManager(createConfig({ sandboxEnabled: false }));
+
+    expect(window.options.webPreferences).toMatchObject({ sandbox: false });
   });
 
   it('加载失败时兜底显示窗口', () => {

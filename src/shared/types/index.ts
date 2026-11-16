@@ -9,6 +9,7 @@ export interface AppConfig {
   window: WindowConfig;
   features: FeatureFlags;
   tray: TrayConfig;
+  security: SecurityConfig;
 }
 
 export interface WindowConfig {
@@ -27,6 +28,14 @@ export interface FeatureFlags {
 export interface TrayConfig {
   hasShownFirstTimeNotice: boolean;
   balloonNotificationEnabled: boolean;
+}
+
+export interface SecurityConfig {
+  /**
+   * 是否启用 Chromium 沙箱，默认 true。
+   * 只在启动早期从 userData/config.json 读取；渲染进程不能通过 config:update 修改。
+   */
+  sandboxEnabled: boolean;
 }
 
 // 系统信息类型

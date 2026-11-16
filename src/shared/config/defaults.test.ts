@@ -9,6 +9,7 @@ describe('createDefaultConfig', () => {
     expect(config.features.developerTools).toBe(false);
     expect(config.tray.hasShownFirstTimeNotice).toBe(false);
     expect(config.tray.balloonNotificationEnabled).toBe(false);
+    expect(config.security.sandboxEnabled).toBe(true);
   });
 
   it('深合并覆盖项且不丢失同级字段', () => {
@@ -20,5 +21,6 @@ describe('createDefaultConfig', () => {
     expect(config.appName).toBe('Demo');
     expect(config.window).toEqual({ width: 800, height: 600 });
     expect(config.features).toEqual({ developerTools: false });
+    expect(config.security).toEqual({ sandboxEnabled: true });
   });
 });

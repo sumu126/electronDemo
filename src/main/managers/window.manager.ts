@@ -71,7 +71,8 @@ export class WindowManager {
         preload: join(__dirname, './preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: true,
+        // 与启动早期的判断保持一致：只有显式 false 才关闭，异常值一律按开启处理
+        sandbox: this.configModule?.getValue<boolean>('security.sandboxEnabled') !== false,
       },
     });
 

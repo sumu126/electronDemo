@@ -23,6 +23,9 @@ export function createDefaultConfig(overrides: Partial<AppConfig> = {}): AppConf
       hasShownFirstTimeNotice: false,
       balloonNotificationEnabled: false,
     },
+    security: {
+      sandboxEnabled: true,
+    },
   };
 
   return deepMerge(defaults, overrides) as AppConfig;
