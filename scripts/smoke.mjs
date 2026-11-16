@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Electron 冒烟测试：用临时 userData 启动一次真实应用，
- * 校验配置落盘与主窗口日志，然后退出。CI 与本地都能跑。
+ * Electron 冒烟测试：用临时 userData + 临时 .env 启动一次真实应用，
+ * 校验 .env 配置加载、主窗口创建与单实例锁，然后退出。CI 与本地都能跑。
  *
  * 用法：node scripts/smoke.mjs
  */
@@ -25,6 +25,14 @@ const isWindows = process.platform === 'win32';
 const staleLockPath = join(userDataDir, 'lockfile');
 writeFileSync(staleLockPath, 'stale', 'utf-8');
 chmodSync(staleLockPath, 0o444);
+
+// 项目配置只有一个来源：.env。smoke 用临时文件，避免依赖开发机的本地配置。
+const envFilePath = join(userDataDir, '.env');
+writeFileSync(
+  envFilePath,
+  ['THEME=light', 'LANGUAGE=zh-CN', 'WINDOW_WIDTH=1000', 'WINDOW_HEIGHT=700', ''].join('\n'),
+  'utf-8',
+);
 
 // CI（尤其容器里的 Linux）需要关掉 GPU 与沙箱才能起窗口
 const args = ['.', '--disable-gpu'];
@@ -90,7 +98,11 @@ const fail = (message) => {
 };
 
 const main = async () => {
-  const env = { ...process.env, ELECTRON_USER_DATA_DIR: userDataDir };
+  const env = {
+    ...process.env,
+    ELECTRON_USER_DATA_DIR: userDataDir,
+    ELECTRON_ENV_FILE: envFilePath,
+  };
   delete env.ELECTRON_RUN_AS_NODE;
 
   const child = spawn(electronPath, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -106,14 +118,12 @@ const main = async () => {
     }
   });
 
-  const configPath = join(userDataDir, 'config.json');
   const logPath = join(userDataDir, 'logs', 'main.log');
   const deadline = Date.now() + TIMEOUT_MS;
 
   const readLog = () => (existsSync(logPath) ? readFileSync(logPath, 'utf-8') : '');
 
-  // 日志是异步落盘的，且 config.json 会先于「Main window created」写入：
-  // 只等文件出现就检查内容会撞上竞态，必须轮询到目标行真正出现。
+  // 日志是异步落盘的：只等文件出现就检查内容会撞上竞态，必须轮询到目标行真正出现。
   const waitForLogLine = async (needle) => {
     while (Date.now() < deadline) {
       if (exited) {
@@ -137,26 +147,22 @@ const main = async () => {
         fail('Electron exited before the app finished starting');
       }
 
-      if (existsSync(configPath) && existsSync(logPath)) {
+      if (existsSync(logPath)) {
         break;
       }
 
       await sleep(POLL_INTERVAL_MS);
     }
 
-    if (!existsSync(configPath) || !existsSync(logPath)) {
-      fail('config.json or logs/main.log was not created in time');
+    if (!existsSync(logPath)) {
+      fail('logs/main.log was not created in time');
     }
 
+    // 配置只从 .env 读取，先确认它真的被加载，再确认窗口起来
+    await waitForLogLine('Project config loaded from');
     await waitForLogLine('Main window created');
     // 启动打点在窗口创建之后，同样要等它落盘
     await waitForLogLine('Startup completed');
-
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-
-    if (!config.appName) {
-      fail('config.json has no appName');
-    }
 
     const log = readLog();
 
@@ -189,7 +195,7 @@ const main = async () => {
       fail(`second instance exited with ${secondCode}, expected ${SECOND_INSTANCE_EXIT_CODE}`);
     }
 
-    console.log(`[smoke] OK: app started, config + log written under ${userDataDir}`);
+    console.log(`[smoke] OK: app started, .env loaded + log written under ${userDataDir}`);
   } finally {
     stop(child);
     await waitForExit(child);

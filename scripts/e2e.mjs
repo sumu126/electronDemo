@@ -2,15 +2,15 @@
 
 /**
  * 真实交互 e2e：启动 Vite + Electron，用渲染进程的远程调试端口驱动界面，
- * 走一遍「窗口状态恢复 → 打开配置 → 改主题 → 保存 → 切语言 → 重启再验证」的完整链路。
+ * 走一遍「.env 首启生效 → 设置页只读 → 改 .env → 重启再验证」的完整链路。
  *
  * 为什么需要它：单测把 invoke mock 掉之后，像「Vue Proxy 无法结构化克隆」这类问题
- * 在单测里永远是绿的，只有真实 IPC 链路才会暴露；窗口状态恢复同理。
+ * 在单测里永远是绿的，只有真实 IPC 链路才会暴露；.env → 主进程 → 窗口/渲染端同理。
  *
  * 用法：node scripts/e2e.mjs
  */
 import { spawn } from 'child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import electronPath from 'electron';
@@ -18,12 +18,15 @@ import electronPath from 'electron';
 const root = process.cwd();
 const viteBin = join(root, 'node_modules/vite/bin/vite.js');
 const userDataDir = mkdtempSync(join(tmpdir(), 'electron-e2e-'));
+const envFilePath = join(userDataDir, '.env');
 const DEBUG_PORT = 9223;
 const DEV_URL = 'http://localhost:5173';
 const isWindows = process.platform === 'win32';
 const TOTAL_TIMEOUT_MS = 120_000;
-const SEEDED_WIDTH = 1000;
-const SEEDED_HEIGHT = 700;
+const FIRST_WIDTH = 1000;
+const FIRST_HEIGHT = 700;
+const SECOND_WIDTH = 1100;
+const SECOND_HEIGHT = 720;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -167,11 +170,28 @@ const connectRenderer = async () => {
   return { evaluate, close: () => socket.close() };
 };
 
-const configPath = () => join(userDataDir, 'config.json');
-const readConfig = () => JSON.parse(readFileSync(configPath(), 'utf-8'));
-
-const env = { ...process.env, ELECTRON_USER_DATA_DIR: userDataDir };
+const env = {
+  ...process.env,
+  ELECTRON_USER_DATA_DIR: userDataDir,
+  ELECTRON_ENV_FILE: envFilePath,
+};
 delete env.ELECTRON_RUN_AS_NODE;
+
+const writeProjectEnv = ({ theme, language, width, height }) => {
+  writeFileSync(
+    envFilePath,
+    [
+      `THEME=${theme}`,
+      `LANGUAGE=${language}`,
+      `WINDOW_WIDTH=${width}`,
+      `WINDOW_HEIGHT=${height}`,
+      'WINDOW_MAXIMIZED=false',
+      'SECURITY_SANDBOX_ENABLED=true',
+      '',
+    ].join('\n'),
+    'utf-8',
+  );
+};
 
 let electron = null;
 
@@ -202,8 +222,8 @@ const stopRenderer = async () => {
 };
 
 const assertWindowSize = async (evaluate, label, expected) => {
-  const expectedWidth = expected?.width ?? SEEDED_WIDTH;
-  const expectedHeight = expected?.height ?? SEEDED_HEIGHT;
+  const expectedWidth = expected.width;
+  const expectedHeight = expected.height;
   const width = await evaluate('window.outerWidth');
   const height = await evaluate('window.outerHeight');
 
@@ -215,13 +235,8 @@ const assertWindowSize = async (evaluate, label, expected) => {
 };
 
 const main = async () => {
-  // 预置窗口状态，第一次启动就应该按它建窗；关闭时再写回同一份状态
   mkdirSync(userDataDir, { recursive: true });
-  writeFileSync(
-    configPath(),
-    JSON.stringify({ window: { width: SEEDED_WIDTH, height: SEEDED_HEIGHT } }, null, 2),
-    'utf-8',
-  );
+  writeProjectEnv({ theme: 'light', language: 'zh-CN', width: FIRST_WIDTH, height: FIRST_HEIGHT });
 
   const vite = spawn(process.execPath, [viteBin, '--port', '5173', '--strictPort'], {
     cwd: root,
@@ -245,80 +260,53 @@ const main = async () => {
     const renderer = await launchRenderer();
     const { evaluate } = renderer;
 
-    // 1. 应用已挂载，且按预置状态恢复窗口尺寸
+    // 1. 应用已挂载，窗口尺寸与主题都由第一次写入的 .env 决定
     await waitFor(
       async () => (await evaluate(`Boolean(document.querySelector('.app-container'))`)) === true,
       15_000,
       'app container not rendered',
     );
-    await assertWindowSize(evaluate, 'first launch');
+    await assertWindowSize(evaluate, 'first launch', {
+      width: FIRST_WIDTH,
+      height: FIRST_HEIGHT,
+    });
+    assert(
+      (await evaluate(`document.documentElement.dataset.theme`)) === 'light',
+      'data-theme is not light on first launch',
+    );
 
-    // 2. 打开配置面板
+    // 2. 设置页只读：配置只能改 .env，界面上不再有可编辑控件
     await evaluate(`document.querySelector('.btn-success').click()`);
     await waitFor(
       async () => (await evaluate(`Boolean(document.querySelector('.config-panel'))`)) === true,
       5_000,
       'config panel did not open',
     );
-
-    // 3. 改主题并保存（走真实 IPC：Proxy → toPlain → 主进程 schema 校验 → 落盘）
-    await evaluate(`
-      (() => {
-        const select = document.querySelectorAll('.config-panel select')[0];
-        select.value = 'dark';
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        document.querySelector('.config-panel .btn-primary').click();
-      })()
-    `);
-
-    await waitFor(
-      () => existsSync(configPath()) && readConfig().theme === 'dark',
-      10_000,
-      'theme was not persisted as dark',
+    assert(
+      (await evaluate(`document.querySelectorAll('.config-panel select').length`)) === 0,
+      'config panel still renders editable selects',
     );
     assert(
-      (await evaluate(
-        `document.querySelector('.config-panel .error-message')?.textContent ?? null`,
-      )) === null,
-      'config panel shows an error after saving theme',
+      (await evaluate(`document.querySelectorAll('.config-panel button').length`)) === 0,
+      'config panel still renders action buttons',
     );
-
-    // 4. 切换语言，确认界面文案跟着变（i18n 由配置驱动）
-    await evaluate(`
-      (() => {
-        const select = document.querySelectorAll('.config-panel select')[1];
-        select.value = 'en-US';
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        document.querySelector('.config-panel .btn-primary').click();
-      })()
-    `);
-
-    await waitFor(() => readConfig().language === 'en-US', 10_000, 'language was not persisted');
-
     await waitFor(
       async () =>
-        (await evaluate(`document.body.textContent.includes('Application settings')`)) === true,
+        (await evaluate(`Boolean(document.querySelector('.config-panel .config-hint'))`)) === true,
       5_000,
-      'UI text did not switch to English',
-    );
-
-    // 5. 主题真的生效：<html data-theme="dark">
-    assert(
-      (await evaluate(`document.documentElement.dataset.theme`)) === 'dark',
-      'data-theme is not dark after switching theme',
+      'config panel does not show the .env hint',
     );
 
     renderer.close();
 
-    // 6. 真正重启一次：窗口状态、主题、语言都应从 config.json 恢复
-    const savedWindow = readConfig().window;
-    assert(
-      Math.abs(savedWindow.width - SEEDED_WIDTH) <= 16 &&
-        Math.abs(savedWindow.height - SEEDED_HEIGHT) <= 16,
-      `saved window state is not derived from seed: ${savedWindow.width}x${savedWindow.height}`,
-    );
-
+    // 3. 改 .env 后重启：主题、语言、窗口尺寸都应被新配置驱动
     await stopRenderer();
+    writeProjectEnv({
+      theme: 'dark',
+      language: 'en-US',
+      width: SECOND_WIDTH,
+      height: SECOND_HEIGHT,
+    });
 
     const second = await launchRenderer();
     const evaluateSecond = second.evaluate;
@@ -330,22 +318,48 @@ const main = async () => {
       'app container not rendered after restart',
     );
 
-    await assertWindowSize(evaluateSecond, 'after restart', savedWindow);
+    await assertWindowSize(evaluateSecond, 'after restart', {
+      width: SECOND_WIDTH,
+      height: SECOND_HEIGHT,
+    });
 
     assert(
-      readConfig().theme === 'dark' && readConfig().language === 'en-US',
-      'theme or language was not persisted across restart',
+      (await evaluateSecond(`document.documentElement.dataset.theme`)) === 'dark',
+      'data-theme is not dark after editing .env',
     );
 
     await waitFor(
       async () =>
         (await evaluateSecond(`document.body.textContent.includes('System info')`)) === true,
       5_000,
-      'UI text did not restore to English after restart',
+      'UI text did not switch to English after editing .env',
+    );
+
+    await evaluateSecond(`document.querySelector('.btn-success').click()`);
+    await waitFor(
+      async () =>
+        (await evaluateSecond(`Boolean(document.querySelector('.config-panel'))`)) === true,
+      5_000,
+      'config panel did not open after restart',
+    );
+
+    await waitFor(
+      async () =>
+        (await evaluateSecond(`document.body.textContent.includes('Application settings')`)) ===
+        true,
+      5_000,
+      'config panel did not switch to English after editing .env',
+    );
+
+    assert(
+      (await evaluateSecond(
+        `document.querySelector('.config-panel').textContent.includes('.env')`,
+      )) === true,
+      'config panel does not reference .env after restart',
     );
 
     second.close();
-    console.log('[e2e] OK: 窗口状态恢复、配置保存、主题应用、语言切换与重启恢复全部通过真实链路');
+    console.log('[e2e] OK: .env 驱动窗口尺寸、主题与语言，设置页只读，重启后配置生效');
   } finally {
     killTree(electron);
     await waitForExit(electron);

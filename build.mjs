@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// 确保打包前存在 .env（electron-builder 会把它复制到 resources 下）
+import './scripts/ensure-env.mjs';
 import { build } from 'vite';
 import { rm, mkdir } from 'fs/promises';
 

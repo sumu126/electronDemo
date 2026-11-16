@@ -11,6 +11,8 @@ import { spawn } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, watch } from 'fs';
 import { join } from 'path';
 import electronPath from 'electron';
+// 本地没有 .env 时从 .env.example 复制一份，避免新克隆直接跑起来没有配置
+import './ensure-env.mjs';
 
 const root = process.cwd();
 const viteBin = join(root, 'node_modules/vite/bin/vite.js');
@@ -28,12 +30,15 @@ const devUserDataDir =
   join(root, 'node_modules', '.cache', 'electron-dev-user-data');
 const mainLogPath = join(devUserDataDir, 'logs', 'main.log');
 const isWindows = process.platform === 'win32';
+// 配置唯一来源：项目根目录的 .env（可用 ELECTRON_ENV_FILE 覆盖）
+const envFilePath = process.env.ELECTRON_ENV_FILE || join(root, '.env');
 
 let viteProcess = null;
 let electronProcess = null;
 let electronStartedAt = 0;
 let rebuilding = false;
 let debounceTimer = null;
+let envRestartTimer = null;
 let shuttingDown = false;
 let useNoSandbox = false;
 
@@ -210,6 +215,15 @@ const scheduleRebuild = (filename) => {
   }, REBUILD_DEBOUNCE_MS);
 };
 
+/** .env 只在启动时读取，改完必须重启 Electron 才生效 */
+const scheduleEnvRestart = () => {
+  clearTimeout(envRestartTimer);
+  envRestartTimer = setTimeout(() => {
+    log('.env changed, restarting Electron...');
+    void restartElectron();
+  }, REBUILD_DEBOUNCE_MS);
+};
+
 const shutdown = (code = 0) => {
   if (shuttingDown) {
     return;
@@ -230,6 +244,7 @@ const main = async () => {
 
   log(`starting Vite dev server at ${DEV_SERVER_URL}`);
   log(`dev userData: ${devUserDataDir}`);
+  log(`config: ${envFilePath}`);
   viteProcess = spawnChild(process.execPath, [viteBin, '--port', '5173', '--strictPort']);
 
   viteProcess.on('exit', (code) => {
@@ -248,7 +263,14 @@ const main = async () => {
     });
   }
 
-  log('watching src/main, src/preload, src/shared');
+  // 监听仓库根目录（非递归），只关心 .env；这样编辑器用「先删后建」保存也不会丢失监听
+  watch(root, { recursive: false }, (_event, filename) => {
+    if (filename === '.env') {
+      scheduleEnvRestart();
+    }
+  });
+
+  log('watching src/main, src/preload, src/shared, .env');
 };
 
 process.on('SIGINT', () => shutdown(0));
