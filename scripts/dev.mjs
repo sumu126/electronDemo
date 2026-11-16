@@ -8,7 +8,7 @@
  * 是这套脚手架日常开发里最费时间的一环。
  */
 import { spawn } from 'child_process';
-import { watch } from 'fs';
+import { existsSync, mkdirSync, readFileSync, watch } from 'fs';
 import { join } from 'path';
 import electronPath from 'electron';
 
@@ -17,15 +17,41 @@ const viteBin = join(root, 'node_modules/vite/bin/vite.js');
 const WATCH_DIRS = ['src/main', 'src/preload', 'src/shared'];
 const DEV_SERVER_URL = 'http://localhost:5173';
 const REBUILD_DEBOUNCE_MS = 250;
+const QUICK_EXIT_MS = 5000;
+// 与 src/main/index.ts 的 SECOND_INSTANCE_EXIT_CODE 保持一致
+const SECOND_INSTANCE_EXIT_CODE = 21;
+// 开发态用项目内 userData：不同克隆/正式包不再共用单实例锁，也不污染用户配置
+const devUserDataDir =
+  process.env.ELECTRON_USER_DATA_DIR ||
+  join(root, 'node_modules', '.cache', 'electron-dev-user-data');
+const mainLogPath = join(devUserDataDir, 'logs', 'main.log');
 const isWindows = process.platform === 'win32';
 
 let viteProcess = null;
 let electronProcess = null;
+let electronStartedAt = 0;
 let rebuilding = false;
 let debounceTimer = null;
 let shuttingDown = false;
 
 const log = (message) => console.log(`[dev] ${message}`);
+
+// Windows 下 Electron 是 GUI 程序，stdout 不一定出现在当前终端；
+// 这里既转发它的输出，也在提前退出时直接打印日志尾部。
+const printMainLogTail = (lines = 15) => {
+  if (!existsSync(mainLogPath)) {
+    return;
+  }
+
+  try {
+    const tail = readFileSync(mainLogPath, 'utf-8').trimEnd().split('\n').slice(-lines);
+    console.log('----- main.log tail -----');
+    console.log(tail.join('\n'));
+    console.log('-------------------------');
+  } catch {
+    // 读不到日志就不阻塞退出
+  }
+};
 
 const spawnChild = (command, args, options = {}) =>
   spawn(command, args, { cwd: root, stdio: 'inherit', ...options });
@@ -73,19 +99,46 @@ const waitForServer = async (timeoutMs = 30_000) => {
 };
 
 const startElectron = () => {
-  const env = { ...process.env };
+  const env = { ...process.env, ELECTRON_USER_DATA_DIR: devUserDataDir };
   // Electron 系终端（VS Code 等）会带上这个变量，会让 Electron 退化成普通 Node
   delete env.ELECTRON_RUN_AS_NODE;
 
-  electronProcess = spawnChild(electronPath, ['.'], { env });
+  electronStartedAt = Date.now();
+  // 用管道而不是 inherit：Windows 下 GUI 程序的 stdout/stderr 才能被拿到并转发
+  electronProcess = spawnChild(electronPath, ['.'], {
+    env,
+    stdio: ['inherit', 'pipe', 'pipe'],
+  });
+  electronProcess.stdout.on('data', (chunk) => process.stdout.write(chunk));
+  electronProcess.stderr.on('data', (chunk) => process.stderr.write(chunk));
 
   electronProcess.on('exit', (code) => {
     electronProcess = null;
 
     // 用户关掉应用（或重启 Electron）时结束整个开发会话
     if (!shuttingDown && !rebuilding) {
+      const exitCode = code ?? 0;
+      const quickExit = Date.now() - electronStartedAt < QUICK_EXIT_MS;
+
+      log(`Electron exited with code ${exitCode}`);
+
+      if (exitCode === SECOND_INSTANCE_EXIT_CODE) {
+        log('Electron 没有启动：单实例锁获取失败。');
+        log('probe=held 表示同一 userData 下已有实例（常见是关窗后缩到托盘）。');
+        log('probe=unavailable 表示 lockfile 无法删除/创建，请检查权限或安全软件。');
+        log('probe=skipped 表示当前平台不做 lockfile 清理（Linux/macOS），通常是已有实例。');
+      } else if (quickExit) {
+        log('Electron 启动后很快退出，下面是 main.log 末尾，便于定位：');
+      }
+
+      if (exitCode === SECOND_INSTANCE_EXIT_CODE || quickExit) {
+        printMainLogTail();
+      }
+
+      log(`dev userData: ${devUserDataDir}`);
+      log(`main.log: ${mainLogPath}`);
       log('Electron exited, stopping dev session');
-      shutdown(code ?? 0);
+      shutdown(exitCode);
     }
   });
 };
@@ -152,10 +205,13 @@ const shutdown = (code = 0) => {
 };
 
 const main = async () => {
+  mkdirSync(devUserDataDir, { recursive: true });
+
   log('building main process');
   await buildMain();
 
   log(`starting Vite dev server at ${DEV_SERVER_URL}`);
+  log(`dev userData: ${devUserDataDir}`);
   viteProcess = spawnChild(process.execPath, [viteBin, '--port', '5173', '--strictPort']);
 
   viteProcess.on('exit', (code) => {
