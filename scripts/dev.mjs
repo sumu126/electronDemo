@@ -18,6 +18,8 @@ const WATCH_DIRS = ['src/main', 'src/preload', 'src/shared'];
 const DEV_SERVER_URL = 'http://localhost:5173';
 const REBUILD_DEBOUNCE_MS = 250;
 const QUICK_EXIT_MS = 5000;
+// Windows 上 Chromium 沙箱初始化失败时的退出码（0x80000003）
+const SANDBOX_CRASH_EXIT_CODE = 2147483651;
 // 与 src/main/index.ts 的 SECOND_INSTANCE_EXIT_CODE 保持一致
 const SECOND_INSTANCE_EXIT_CODE = 21;
 // 开发态用项目内 userData：不同克隆/正式包不再共用单实例锁，也不污染用户配置
@@ -33,6 +35,7 @@ let electronStartedAt = 0;
 let rebuilding = false;
 let debounceTimer = null;
 let shuttingDown = false;
+let useNoSandbox = false;
 
 const log = (message) => console.log(`[dev] ${message}`);
 
@@ -103,9 +106,15 @@ const startElectron = () => {
   // Electron 系终端（VS Code 等）会带上这个变量，会让 Electron 退化成普通 Node
   delete env.ELECTRON_RUN_AS_NODE;
 
+  const args = ['.'];
+  if (useNoSandbox) {
+    args.push('--no-sandbox');
+    log('Electron 以 --no-sandbox 运行（当前环境 Chromium 沙箱不可用，仅影响开发态）');
+  }
+
   electronStartedAt = Date.now();
   // 用管道而不是 inherit：Windows 下 GUI 程序的 stdout/stderr 才能被拿到并转发
-  electronProcess = spawnChild(electronPath, ['.'], {
+  electronProcess = spawnChild(electronPath, args, {
     env,
     stdio: ['inherit', 'pipe', 'pipe'],
   });
@@ -119,6 +128,15 @@ const startElectron = () => {
     if (!shuttingDown && !rebuilding) {
       const exitCode = code ?? 0;
       const quickExit = Date.now() - electronStartedAt < QUICK_EXIT_MS;
+
+      // 外置盘等路径下 Chromium 沙箱可能直接原生崩溃；开发态自动降级重试一次
+      if (exitCode === SANDBOX_CRASH_EXIT_CODE && !useNoSandbox) {
+        useNoSandbox = true;
+        log('Electron 原生退出 0x80000003：当前路径无法启用 Chromium 沙箱。');
+        log('开发态自动加 --no-sandbox 重试一次；生产构建不受影响。');
+        startElectron();
+        return;
+      }
 
       log(`Electron exited with code ${exitCode}`);
 
