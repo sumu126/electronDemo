@@ -6,6 +6,8 @@
  */
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+// npm install / npm ci 后先补齐本地 .env，新克隆不必再手动复制模板
+import './ensure-env.mjs';
 
 const repoRoot = process.cwd();
 const gitDir = join(repoRoot, '.git');

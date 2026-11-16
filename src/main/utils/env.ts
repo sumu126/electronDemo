@@ -26,11 +26,11 @@ export function parseEnvContent(content: string): ProjectEnv {
     const [, key, rawValue] = match;
     let value = rawValue.trim();
 
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+    if (value.startsWith('"') || value.startsWith("'")) {
+      // 引号值允许后面跟行内注释：THEME="dark" # 深色
+      const quote = value[0];
+      const closingIndex = value.indexOf(quote, 1);
+      value = closingIndex > 0 ? value.slice(1, closingIndex) : value.slice(1);
     } else {
       const commentIndex = value.indexOf(' #');
       if (commentIndex >= 0) {

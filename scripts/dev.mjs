@@ -9,7 +9,7 @@
  */
 import { spawn } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, watch } from 'fs';
-import { join } from 'path';
+import { join, dirname, basename } from 'path';
 import electronPath from 'electron';
 // 本地没有 .env 时从 .env.example 复制一份，避免新克隆直接跑起来没有配置
 import './ensure-env.mjs';
@@ -32,6 +32,8 @@ const mainLogPath = join(devUserDataDir, 'logs', 'main.log');
 const isWindows = process.platform === 'win32';
 // 配置唯一来源：项目根目录的 .env（可用 ELECTRON_ENV_FILE 覆盖）
 const envFilePath = process.env.ELECTRON_ENV_FILE || join(root, '.env');
+const envDir = dirname(envFilePath);
+const envFileName = basename(envFilePath);
 
 let viteProcess = null;
 let electronProcess = null;
@@ -263,9 +265,9 @@ const main = async () => {
     });
   }
 
-  // 监听仓库根目录（非递归），只关心 .env；这样编辑器用「先删后建」保存也不会丢失监听
-  watch(root, { recursive: false }, (_event, filename) => {
-    if (filename === '.env') {
+  // 监听 .env 所在目录（非递归），只关心该文件；编辑器「先删后建」也不会丢失监听
+  watch(envDir, { recursive: false }, (_event, filename) => {
+    if (filename === envFileName) {
       scheduleEnvRestart();
     }
   });

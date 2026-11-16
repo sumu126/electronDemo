@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import { app } from 'electron';
 import { APP_CONSTANTS, IPC_CHANNELS } from '@shared/constants';
 import { buildConfigFromEnv } from '@shared/config/from-env';
@@ -30,10 +31,11 @@ export class ConfigModule {
   public async init(): Promise<void> {
     const envPath = resolveEnvPath();
 
-    if (Object.keys(loadProjectEnv()).length === 0) {
-      getLogger().warn(`Project config not found at ${envPath}, using defaults`);
-    } else {
+    // 只判断文件是否存在：空文件或只有注释的模板同样算「已加载」，避免日志误导
+    if (existsSync(envPath)) {
       getLogger().info(`Project config loaded from ${envPath}`);
+    } else {
+      getLogger().warn(`Project config not found at ${envPath}, using defaults`);
     }
 
     for (const warning of this.warnings) {

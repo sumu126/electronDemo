@@ -6,7 +6,7 @@
   "author": "sumu126",
   "desktopName": "electron-vue3-demo.desktop",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/ensure-env.mjs && vite",
     "build": "node ./build.mjs",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
