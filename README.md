@@ -13,7 +13,7 @@
 - **窗口状态持久化**：位置、尺寸、最大化状态自动保存与恢复，离屏坐标自动丢弃
 - **路由骨架**：`vue-router` 4 + hash 模式 + 404 兜底，打包后 `file://` 可直接工作
 - **错误边界**：页面级异常被 `AppErrorBoundary` 兜住，不整页白屏
-- **模块系统**：`userData/modules` 下的 CommonJS 模块可动态加载，单个模块失败不影响启动
+- **模块系统**：核心模块可通过 `ipcHandlers()` 声明自己的 IPC 通道；`userData/modules` 下的 CommonJS 模块可动态加载，单个模块启动失败不影响启动
 - **日志与异常**：主进程异步文件日志（退出前刷盘，按 5 MB 轮转保留 3 份）+ **渲染端异常经 `log:report` 上报并限流** + 启动耗时分段打点
 - **开发体验**：`electron:dev` 支持主进程/preload 热重启，渲染进程走 Vite HMR
 - **质量门禁**：`typecheck` / `lint` / `format:check` / `test`（含覆盖率阈值）/ `build`，本地钩子与 CI 同一套，CI 另有真机冒烟
@@ -131,8 +131,10 @@ docs/                         # 文档与实施记录
 
 1. `src/shared/constants/index.ts`：加入 `IPC_CHANNELS`
 2. `src/shared/types/index.ts`：在 `IpcInvokeMap` 声明 `{ args: [...], returns: T }`（参数与返回值都参与类型校验）
-3. `src/main/ipc-manager/ipc.manager.ts`：注册 handler
+3. 在所属**核心模块**里实现 `ipcHandlers()`，返回 `{ channel, handler }`；`IpcManager` 只做聚合与 sender 校验，不再硬编码业务通道
 4. `src/preload/index.ts`：把通道加入白名单（必须内联，不能从共享模块导入）。白名单与 `IpcChannel` 的一致性有编译期断言兜底，漏加会直接 `typecheck` 失败，不会拖到运行时
+
+模块贡献点的类型从 `IpcInvokeMap` 推导：通道名、实参元组与返回值都会校验；重复通道会在启动时直接抛错。`userData/modules` 下的插件不参与收集，避免覆盖核心通道。
 
 渲染端调用：`window.electronAPI.invoke('demo:hello', arg)`，参数与返回值都自动获得类型；传错实参形状会在编译期报错。
 
@@ -158,6 +160,7 @@ module.exports = {
 ```
 
 - 核心模块初始化失败会中断启动；用户模块失败只隔离自身
+- 用户模块不会被收集 IPC 贡献；需要新增渲染进程可调用的通道时，按上面的核心模块流程改源码
 - 模块运行在主进程，拥有主进程权限；只保证 `electron` 与 Node 内置模块可用，**不能 require 第三方依赖**（打包时排除了 `node_modules`）
 - 默认可执行外部代码属于插件的固有风险，生产环境请自行校验模块来源
 

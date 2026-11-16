@@ -611,5 +611,38 @@ git clone → npm ci（501 包，17s）→ build → typecheck → lint → test
 
 ### 仍未处理
 
-- **P0-1 未动**：IPC 注册仍是内核硬编码，模块没有贡献点
+- **P0-1 未动**：IPC 注册仍是内核硬编码，模块没有贡献点（第九轮已补上，见第 24 节）
 - 主进程启动链路与窗口事件仍无测试；e2e 仍只有一条主流程
+
+## 24. 第九轮：IPC 模块贡献点（2026-11-16）
+
+把"新增通道必须改 `ipc.manager.ts`"改成"模块声明自己提供哪些通道，内核只做聚合"。
+这是交接文档里最后一个架构级缺口。
+
+### 改动
+
+1. **新增 `main/ipc/ipc-contribution.ts`**：`IpcHandlerContribution` 由 `IpcInvokeMap` 映射出每个通道的
+   `{ channel, handler }`，handler 的通道名、实参元组与返回值同时受类型约束
+2. **`Module` 增加可选 `ipcHandlers()`**：核心模块可以声明自己提供的通道
+3. **`ConfigModule` 迁移为第一个贡献点**：自行声明 `config:get` / `config:update`，`ConfigHandler` 只保留适配层
+4. **`IpcManager` 删除 config 硬编码**：只保留 ping / system / window / log 内核通道，新增模块通道聚合
+5. **重复通道拦截**：`registerHandler` 发现重复直接抛错，模块不能静默覆盖核心通道
+6. **信任边界**：`ModuleManager` 只收集 `loadCoreModules()` 注册的核心模块；`userData/modules` 插件不参与
+
+### 边界（没有变）
+
+- 新增通道仍要改 `constants` / `types` / `preload` 三处；preload 白名单是编译期安全边界，不能动态化
+- 插件仍不能给渲染进程新增可调用通道
+- 没有引入 DI、事件总线或装饰器
+
+### 验证结果
+
+- `typecheck` / `lint` / `format:check` / `test:coverage` / `build` / `smoke` / `e2e` 全绿
+- 用例 128 → **131**（IpcManager +2、ConfigModule +1、ModuleManager +1，替换 1 条旧用例）
+- 覆盖率 statements **55.79%** / branches **60.77%** / functions **53.42%** / lines **56.16%**
+- e2e 首次运行时断言通过但 Windows 临时目录清理报 `EBUSY`，已给清理加 5 次重试（`88964e8`），复跑通过
+
+### 仍未处理
+
+- 主进程启动链路与窗口事件仍无测试
+- e2e 仍只有一条主流程（配置保存 / 主题 / 语言），缺"重启后窗口状态恢复"

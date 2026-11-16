@@ -105,8 +105,13 @@ export class UserModule implements Module {
 private async loadCoreModules(): Promise<void> {
   getLogger().info('Loading core modules...');
 
-  await this.registry.register(new ConfigModule(), { required: true });
-  await this.registry.register(new UserModule(), { required: true }); // 核心模块：失败即中断启动
+  const configModule = new ConfigModule();
+  const userModule = new UserModule();
+  // 只有这里注册的核心模块会被收集 IPC 贡献
+  this.coreModules.push(configModule, userModule);
+
+  await this.registry.register(configModule, { required: true });
+  await this.registry.register(userModule, { required: true }); // 核心模块：失败即中断启动
 }
 ```
 
@@ -151,54 +156,32 @@ export class UserHandler {
 
 ---
 
-## 5. 注册通道
+## 5. 声明通道（模块贡献点）
 
-**`src/main/ipc-manager/ipc.manager.ts`**：
+`IpcManager` 只做聚合，不在内核里写业务通道。通道由模块自己声明：
+
+**`src/main/modules/user.module.ts`**：
 
 ```ts
 import { UserHandler } from '../ipc/user.handler';
+import type { IpcHandlerContribution } from '../ipc/ipc-contribution';
 
-export class IpcManager {
-  private userHandler: UserHandler | null = null;
+export class UserModule implements Module {
+  // …init 与业务方法
 
-  public setupHandlers(): void {
-    this.initializeConfigHandler();
-    this.initializeUserHandler(); // 需要模块实例，放在模块初始化之后
+  ipcHandlers(): IpcHandlerContribution[] {
+    const handler = new UserHandler(this);
 
-    this.registerPingHandler();
-    // …
-    this.registerUserHandlers();
-  }
-
-  private initializeUserHandler(): void {
-    const userModule = this.moduleManager.getModule<UserModule>('UserModule');
-    if (!userModule) {
-      throw new Error('UserModule not found in module manager');
-    }
-    this.userHandler = new UserHandler(userModule);
-  }
-
-  private registerUserHandlers(): void {
-    if (!this.userHandler) {
-      getLogger().error('UserHandler not initialized');
-      return;
-    }
-
-    this.registerHandler({
-      channel: IPC_CHANNELS.USER_LIST,
-      handler: (event: IpcMainInvokeEvent): Promise<User[]> => this.userHandler!.list(event),
-    });
-
-    this.registerHandler({
-      channel: IPC_CHANNELS.USER_CREATE,
-      handler: (event: IpcMainInvokeEvent, input: { name: string; email: string }) =>
-        this.userHandler!.create(event, input),
-    });
+    return [
+      { channel: 'user:list', handler: (event) => handler.list(event) },
+      { channel: 'user:create', handler: (event, input) => handler.create(event, input) },
+    ];
   }
 }
 ```
 
-`registerHandler` 已经内置了 sender 来源校验，不需要自己写。
+`IpcManager.registerHandler` 已内置 sender 来源校验与重复通道检测，不需要自己写。
+只有 `loadCoreModules()` 注册的核心模块会被收集；`userData/modules` 下的插件不参与，避免覆盖核心通道。
 
 ---
 
