@@ -53,6 +53,20 @@ const fail = (message) => {
   throw new Error(message);
 };
 
+// Windows 上 Chromium 的缓存文件在进程退出后还会短暂占用，重试几次再放弃
+const removeDirWithRetry = async (dir, attempts = 5) => {
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch {
+      await sleep(300);
+    }
+  }
+
+  console.warn(`[e2e] warning: could not remove temp dir ${dir}`);
+};
+
 const assert = (condition, message) => {
   if (!condition) {
     fail(message);
@@ -250,7 +264,7 @@ const main = async () => {
     killTree(electron);
     killTree(vite);
     await sleep(800);
-    rmSync(userDataDir, { recursive: true, force: true });
+    await removeDirWithRetry(userDataDir);
   }
 };
 
