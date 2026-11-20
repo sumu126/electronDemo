@@ -270,9 +270,11 @@ const main = async () => {
       width: FIRST_WIDTH,
       height: FIRST_HEIGHT,
     });
-    assert(
-      (await evaluate(`document.documentElement.dataset.theme`)) === 'light',
-      'data-theme is not light on first launch',
+    // 主题由 config:get 异步驱动，挂载时可能还是默认值；必须等到 .env 的值真正生效
+    await waitFor(
+      async () => (await evaluate(`document.documentElement.dataset.theme`)) === 'light',
+      10_000,
+      'data-theme did not become light on first launch',
     );
 
     // 2. 设置页只读：配置只能改 .env，界面上不再有可编辑控件
@@ -323,9 +325,11 @@ const main = async () => {
       height: SECOND_HEIGHT,
     });
 
-    assert(
-      (await evaluateSecond(`document.documentElement.dataset.theme`)) === 'dark',
-      'data-theme is not dark after editing .env',
+    // 同上：重启后主题同样要等配置加载完成，不能挂载后立刻断言
+    await waitFor(
+      async () => (await evaluateSecond(`document.documentElement.dataset.theme`)) === 'dark',
+      10_000,
+      'data-theme did not become dark after editing .env',
     );
 
     await waitFor(
