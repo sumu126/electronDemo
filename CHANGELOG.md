@@ -56,7 +56,7 @@
 
 ### Fixed
 
-- **e2e 断言跨平台问题**：主题断言改为轮询等待配置异步生效；窗口尺寸改用 `main.log` 里 `Main window created` 的 BrowserWindow bounds——Windows 上 `window.outerWidth` 返回的是内容区（CI 实测期望 1000×700 却得到 974×670），不能作为断言依据
+- **e2e 断言跨平台问题**：主题断言改为轮询等待配置异步生效；窗口尺寸改用 `main.log` 里 `Main window created` 的 BrowserWindow bounds——Windows 上 `window.outerWidth` 返回的是内容区（CI 实测期望 1000×700 却得到 974×670），不能作为断言依据。测试尺寸同时降到 900×640 / 940×660：框架按「工作区减 50px」钳制，Windows CI 的 1024×720 工作区放不下 1000×700
 - **IPC sender 校验**：`startsWith` 前缀匹配可被 `localhost:5173.evil.com`、`@evil.com`、`51730` 绕过，改为按 `URL.origin` 精确比对；打包态拒绝带主机的 `file://`
 - **子窗口守卫**：`createWindow` 创建的子窗口此前没有导航/外链守卫
 - **配置并发写**：窗口状态防抖与 `setValue` 可能互相覆盖，改为串行化 + 临时文件 rename 原子写
