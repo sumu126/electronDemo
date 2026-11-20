@@ -56,6 +56,7 @@
 
 ### Fixed
 
+- **e2e 主题断言竞态**：渲染进程在 `config:get` 返回前就 mount，`data-theme` 先是默认的 `auto` 结果；e2e 在挂载后立即断言会在较慢的 Windows CI 上失败（Linux 通过）。改为轮询等待目标主题
 - **IPC sender 校验**：`startsWith` 前缀匹配可被 `localhost:5173.evil.com`、`@evil.com`、`51730` 绕过，改为按 `URL.origin` 精确比对；打包态拒绝带主机的 `file://`
 - **子窗口守卫**：`createWindow` 创建的子窗口此前没有导航/外链守卫
 - **配置并发写**：窗口状态防抖与 `setValue` 可能互相覆盖，改为串行化 + 临时文件 rename 原子写
