@@ -13,6 +13,7 @@ import { join, dirname, basename } from 'path';
 import electronPath from 'electron';
 // 本地没有 .env 时从 .env.example 复制一份，避免新克隆直接跑起来没有配置
 import './ensure-env.mjs';
+import { readSandboxDisabled } from './sandbox-env.mjs';
 
 const root = process.cwd();
 const viteBin = join(root, 'node_modules/vite/bin/vite.js');
@@ -42,7 +43,8 @@ let rebuilding = false;
 let debounceTimer = null;
 let envRestartTimer = null;
 let shuttingDown = false;
-let useNoSandbox = false;
+// 只有「没加 --no-sandbox 时崩溃过一次」才置位；与 .env 的配置分开记，便于日志区分
+let sandboxCrashFallback = false;
 
 const log = (message) => console.log(`[dev] ${message}`);
 
@@ -113,10 +115,19 @@ const startElectron = () => {
   // Electron 系终端（VS Code 等）会带上这个变量，会让 Electron 退化成普通 Node
   delete env.ELECTRON_RUN_AS_NODE;
 
+  // .env 必须在 spawn 前读取：外置盘上 Chromium 可能早于主进程 JS 就崩溃，
+  // 主进程里的 appendSwitch 来不及执行，只有启动参数能救回来。
+  const sandboxDisabled = readSandboxDisabled(envFilePath);
+  const useNoSandbox = sandboxCrashFallback || sandboxDisabled;
+
   const args = ['.'];
   if (useNoSandbox) {
     args.push('--no-sandbox');
-    log('Electron 以 --no-sandbox 运行（当前环境 Chromium 沙箱不可用，仅影响开发态）');
+    log(
+      sandboxDisabled && !sandboxCrashFallback
+        ? 'SECURITY_SANDBOX_ENABLED=false：以 --no-sandbox 启动（仅开发态；生产包需在启动参数中加 --no-sandbox）'
+        : 'Electron 以 --no-sandbox 运行（当前环境 Chromium 沙箱不可用，仅影响开发态）',
+    );
   }
 
   electronStartedAt = Date.now();
@@ -137,8 +148,8 @@ const startElectron = () => {
       const quickExit = Date.now() - electronStartedAt < QUICK_EXIT_MS;
 
       // 外置盘等路径下 Chromium 沙箱可能直接原生崩溃；开发态自动降级重试一次
-      if (exitCode === SANDBOX_CRASH_EXIT_CODE && !useNoSandbox) {
-        useNoSandbox = true;
+      if (exitCode === SANDBOX_CRASH_EXIT_CODE && !sandboxCrashFallback) {
+        sandboxCrashFallback = true;
         log('Electron 原生退出 0x80000003：当前路径无法启用 Chromium 沙箱。');
         log('开发态自动加 --no-sandbox 重试一次；生产构建不受影响。');
         startElectron();

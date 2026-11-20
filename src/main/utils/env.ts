@@ -77,7 +77,9 @@ export function loadProjectEnv(): ProjectEnv {
   }
 }
 
-/** 只有显式 false 才关闭沙箱；缺省、空值、异常值都保持开启 */
+/** 只有显式 false / 0 / no / off 才关闭沙箱；缺省、空值、异常值都保持开启 */
 export function readSandboxEnabled(env: ProjectEnv = loadProjectEnv()): boolean {
-  return env.SECURITY_SANDBOX_ENABLED?.trim().toLowerCase() !== 'false';
+  const value = env.SECURITY_SANDBOX_ENABLED?.trim().toLowerCase();
+
+  return !(value && ['false', '0', 'no', 'off'].includes(value));
 }

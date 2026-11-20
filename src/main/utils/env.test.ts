@@ -110,11 +110,14 @@ describe('loadProjectEnv', () => {
 });
 
 describe('readSandboxEnabled', () => {
-  it('只有显式 false 才关闭沙箱', () => {
+  it('只有显式关闭值才关闭沙箱', () => {
     expect(readSandboxEnabled({})).toBe(true);
     expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: '' })).toBe(true);
     expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: 'true' })).toBe(true);
     expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: 'maybe' })).toBe(true);
     expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: ' FALSE ' })).toBe(false);
+    expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: '0' })).toBe(false);
+    expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: 'no' })).toBe(false);
+    expect(readSandboxEnabled({ SECURITY_SANDBOX_ENABLED: 'off' })).toBe(false);
   });
 });
