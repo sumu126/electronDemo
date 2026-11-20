@@ -59,7 +59,7 @@ vi.mock('./managers/window.manager', () => ({
     });
     createMainWindow = vi.fn(() => {
       hoisted.calls.push('createMainWindow');
-      return {};
+      return { getBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }) };
     });
     markQuitting = vi.fn();
     destroyTray = vi.fn();

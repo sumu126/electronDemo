@@ -67,9 +67,11 @@ export class App {
     });
 
     // 创建并加载主窗口（内部统一处理开发/打包两种加载方式）
-    this.windowManager.createMainWindow();
+    const mainWindow = this.windowManager.createMainWindow();
     const windowCreatedAt = Date.now();
-    this.logger.info('Main window created');
+    // 记录真实 bounds：e2e 依赖它校验「.env 的 WINDOW_* 是否真的作用到 BrowserWindow」，
+    // 渲染端的 window.outerWidth 在 Windows 上会受边框/DPI 影响，不能作为断言依据
+    this.logger.info('Main window created', mainWindow.getBounds());
 
     // 启动耗时分段打点，便于判断慢在哪一段（Electron 自身启动不在此区间内）
     this.logger.info('Startup completed', {

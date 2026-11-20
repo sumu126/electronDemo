@@ -10,7 +10,7 @@
  * 用法：node scripts/e2e.mjs
  */
 import { spawn } from 'child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import electronPath from 'electron';
@@ -221,16 +221,62 @@ const stopRenderer = async () => {
   await sleep(500);
 };
 
-const assertWindowSize = async (evaluate, label, expected) => {
-  const expectedWidth = expected.width;
-  const expectedHeight = expected.height;
-  const width = await evaluate('window.outerWidth');
-  const height = await evaluate('window.outerHeight');
+const mainLogPath = () => join(userDataDir, 'logs', 'main.log');
 
-  // 允许 16px 误差：Windows 的窗口边框/阴影度量与 BrowserWindow bounds 不完全相等
-  assert(
-    Math.abs(width - expectedWidth) <= 16 && Math.abs(height - expectedHeight) <= 16,
-    `${label}: expected window ~${expectedWidth}x${expectedHeight}, got ${width}x${height}`,
+/** 取 main.log 里最后一条「Main window created」的真实 BrowserWindow bounds */
+const readLastWindowBounds = () => {
+  const logPath = mainLogPath();
+
+  if (!existsSync(logPath)) {
+    return null;
+  }
+
+  const lines = readFileSync(logPath, 'utf-8').split(/\r?\n/);
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const match = lines[index].match(/Main window created (\{.+\})$/);
+
+    if (!match) {
+      continue;
+    }
+
+    try {
+      return JSON.parse(match[1]);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * 断言窗口尺寸用主进程的 BrowserWindow bounds，而不是渲染端 window.outerWidth：
+ * Windows 上后者返回的是内容区（CI 实测 1000x700 会报 974x670），受边框/DPI 影响。
+ * 已重启过一次时日志里会有多条记录，按 expected 轮询，天然只会命中本次启动的那条。
+ */
+const assertWindowSize = async (label, expected) => {
+  const deadline = Date.now() + 15_000;
+  let bounds = null;
+
+  while (Date.now() < deadline) {
+    bounds = readLastWindowBounds();
+
+    if (
+      bounds &&
+      Math.abs(bounds.width - expected.width) <= 4 &&
+      Math.abs(bounds.height - expected.height) <= 4
+    ) {
+      return;
+    }
+
+    await sleep(200);
+  }
+
+  fail(
+    `${label}: expected BrowserWindow ${expected.width}x${expected.height}, got ${
+      bounds ? `${bounds.width}x${bounds.height}` : 'no bounds in main.log'
+    }`,
   );
 };
 
@@ -266,7 +312,7 @@ const main = async () => {
       15_000,
       'app container not rendered',
     );
-    await assertWindowSize(evaluate, 'first launch', {
+    await assertWindowSize('first launch', {
       width: FIRST_WIDTH,
       height: FIRST_HEIGHT,
     });
@@ -320,7 +366,7 @@ const main = async () => {
       'app container not rendered after restart',
     );
 
-    await assertWindowSize(evaluateSecond, 'after restart', {
+    await assertWindowSize('after restart', {
       width: SECOND_WIDTH,
       height: SECOND_HEIGHT,
     });
