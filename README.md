@@ -66,7 +66,7 @@ npm run electron:dev
 
 > **外置盘上 Electron 以 `0x80000003` 退出**：部分外置盘/非系统盘路径下 Chromium 沙箱无法初始化，`main.log` 可能为空。`electron:dev` 首次遇到该退出码会自动加 `--no-sandbox` 重试一次，仅影响开发态；生产构建仍启用沙箱。
 >
-> **想永久关闭沙箱**：编辑项目根目录的 `.env`，设置 `SECURITY_SANDBOX_ENABLED=false` 后重启。开发态也可以直接改项目根目录 `.env`（`electron:dev` 监听到变化会自动重启 Electron）。该开关只从 `.env` 读取，设置页/渲染进程不能修改；关闭会降低安全性，只建议在外置盘等沙箱无法启动的环境使用。
+> **关于 `.env` 的 `SECURITY_SANDBOX_ENABLED=false`**：它在正常环境（如本地盘）会关闭渲染进程/GPU 的沙箱；但外置盘上的 `0x80000003` 发生在 Chromium 启动阶段、早于应用主进程代码执行，此时 `.env` 来不及生效。`electron:dev` 现在会在 spawn 前读取 `.env`，设为 `false` 时直接带 `--no-sandbox`，不再先崩一次；**打包应用**没有启动器改写参数，需在快捷方式/启动命令里加 `--no-sandbox`，或安装到本地盘。关闭沙箱会降低安全性，只建议在外置盘等确实无法初始化的环境使用。
 
 ### 常用命令
 
@@ -231,7 +231,7 @@ configStore.config; // 当前配置（只读）
 - 配置是**只读**的：没有 `config:update`，也没有 `config.json` 落盘；设置页只展示当前值并提示去改 `.env`
 - 窗口标题取自配置的 `appName`（`APP_NAME`），构建脚本不再改写 `index.html`
 - `FEATURE_DEVELOPER_TOOLS` 控制开发态启动时是否自动打开 DevTools
-- `SECURITY_SANDBOX_ENABLED` 默认 `true`。只有显式 `false` 才会在 `app.whenReady` 之前加 `--no-sandbox`，**重启生效**；渲染进程无法修改
+- `SECURITY_SANDBOX_ENABLED` 默认 `true`。只有显式 `false` / `0` / `no` / `off` 才关闭，**重启生效**；开发启动器在 spawn 前读取该键并决定是否加 `--no-sandbox`。外置盘上崩溃发生在应用代码之前，打包应用需在启动参数里加 `--no-sandbox`
 - 主进程支持 `ELECTRON_USER_DATA_DIR` 覆盖 userData 目录（便携模式与 CI 冒烟用）
 
 ### 窗口尺寸与位置

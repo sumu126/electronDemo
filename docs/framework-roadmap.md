@@ -827,3 +827,23 @@ if (error != ERROR_SHARING_VIOLATION) {
 - `.env` 只在启动时读取，运行时改动不生效；`electron:dev` 会自动重启，生产环境需手动重启
 - `.env` 会随安装包分发一份默认值；使用者改安装目录下 `resources/.env` 后重启生效
 - 不再支持从界面修改任何配置——这是刻意的取舍，避免「设置页显示已保存、重启后回退」的假象
+
+### 补充：外置盘上 `.env` 沙箱开关的时序问题（2026-11-20）
+
+用户反馈：把 `SECURITY_SANDBOX_ENABLED` 设为 `false` 后，外置盘首启仍然报 `0x80000003`。
+
+对照实验（外置盘 Electron + 临时 userData，`.env` 均为 `false`）：
+
+| 启动方式                   | 结果                                                 |
+| -------------------------- | ---------------------------------------------------- |
+| 无 `--no-sandbox`          | `0x80000003`，`main.log` 为空，userData 几乎没写入   |
+| 带 `--no-sandbox`          | 正常启动                                             |
+| 本地盘 + 无 `--no-sandbox` | 正常启动（`configured:false, noSandboxSwitch:true`） |
+
+结论：外置盘的崩溃发生在 Chromium 启动阶段、早于主进程 JS，`app.commandLine.appendSwitch` 没有执行机会；`.env` 开关在正常环境有效，但救不了「应用代码之前就崩溃」的场景。
+
+修复：
+
+- 新增 `scripts/sandbox-env.mjs`：开发启动器在 spawn 前读取 `SECURITY_SANDBOX_ENABLED`，显式关闭时直接带 `--no-sandbox`，不再先崩一次；原有崩溃自动降级保留
+- `readSandboxEnabled` 与 `from-env` 的布尔语义对齐（`false/0/no/off` 都算关闭）
+- 打包应用没有启动器改写参数，仍需在快捷方式/启动命令里加 `--no-sandbox`，或安装到本地盘；文档已写明这一限制

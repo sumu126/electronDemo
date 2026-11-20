@@ -17,6 +17,7 @@
 - **打包**：`extraResources` 把 `.env` 复制到安装包 `resources/.env`
 - **测试**：`smoke` / `e2e` 改用临时 `.env` + `ELECTRON_ENV_FILE`；e2e 覆盖「首启配置生效 → 设置页只读 → 改 `.env` → 重启尺寸/主题/语言生效」；新增 `env.test.ts` 与 `from-env.test.ts`
 - **配置健壮性**：启动日志按 `.env` 是否存在判断（空模板不再误报 not found）；引号值支持行内注释（`THEME="dark" # 深色`）；`npm install` 与 `npm run dev` 也会补齐本地 `.env`
+- **沙箱开关时序**：外置盘上 `0x80000003` 发生在主进程代码执行前，原来的 `appendSwitch` 来不及生效。`electron:dev` 改为 spawn 前读取 `.env`，`SECURITY_SANDBOX_ENABLED=false/0/no/off` 时直接带 `--no-sandbox`，不再先崩一次；`readSandboxEnabled` 与 `from-env` 的布尔语义对齐
 - 下方「配置 schema」「配置并发写」「`config.json` 的 `version`」条目随 `config.json` 一并失效，仅留作历史记录
 
 ### Added
