@@ -23,10 +23,12 @@ const DEBUG_PORT = 9223;
 const DEV_URL = 'http://localhost:5173';
 const isWindows = process.platform === 'win32';
 const TOTAL_TIMEOUT_MS = 120_000;
-const FIRST_WIDTH = 1000;
-const FIRST_HEIGHT = 700;
-const SECOND_WIDTH = 1100;
-const SECOND_HEIGHT = 720;
+// 尺寸必须在任何工作区里都低于框架的钳制上限（workArea - 50）：
+// GitHub Windows runner 的工作区是 1024x720，1000x700 会被压到 974x670。
+const FIRST_WIDTH = 900;
+const FIRST_HEIGHT = 640;
+const SECOND_WIDTH = 940;
+const SECOND_HEIGHT = 660;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
